@@ -6,6 +6,5 @@
 
 //Constructor
 
-Settings::Settings()
+Settings::Settings() //Default system settings
     :   theme_("dark"), language_("english"), fontSize_(12), notificationsStatus_(false){}
-//Default system settings
