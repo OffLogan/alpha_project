@@ -1,7 +1,7 @@
 #include "../include/schedule.h"
+#include "../include/appPaths.h"
 #include "ui_schedule.h"
 
-#include <QCoreApplication>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -120,16 +120,31 @@ bool schedule::writeSchedule(bool showSuccessMessage)
     root.insert("version", 1);
     root.insert("items", items);
 
-    const QString filePath = scheduleFilePath();
-    QDir().mkpath(QFileInfo(filePath).path());
-    QFile file(filePath);
-    if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+    const QByteArray payload = QJsonDocument(root).toJson(QJsonDocument::Indented);
+
+    auto writeJsonFile = [&](const QString& filePath) {
+        QDir().mkpath(QFileInfo(filePath).path());
+        QFile file(filePath);
+        if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+            return false;
+        }
+
+        const qint64 writtenBytes = file.write(payload);
+        file.close();
+        return writtenBytes != -1;
+    };
+
+    const QString filePath = writableDataFilePath("data/schedule.json");
+    if (!writeJsonFile(filePath)) {
         QMessageBox::warning(this, "Schedule", "Could not save the schedule.");
         return false;
     }
 
-    file.write(QJsonDocument(root).toJson(QJsonDocument::Indented));
-    file.close();
+    const QString legacyPath = legacyReadableDataFilePath("data/schedule.json");
+    if (!legacyPath.isEmpty() && legacyPath != filePath && !writeJsonFile(legacyPath)) {
+        QMessageBox::warning(this, "Schedule", "Could not save the schedule.");
+        return false;
+    }
 
     if (showSuccessMessage) {
         QMessageBox::information(this, "Schedule", "Schedule saved successfully.");
@@ -216,21 +231,5 @@ void schedule::clearInputs()
 
 QString schedule::scheduleFilePath() const
 {
-    const QString relativePath = "data/schedule.json";
-    const QString appDir = QCoreApplication::applicationDirPath();
-    const QStringList candidates = {
-        QDir::cleanPath(appDir + "/../../../" + relativePath),
-        QDir::cleanPath(QDir::current().absoluteFilePath(relativePath)),
-        QDir::cleanPath(appDir + "/../" + relativePath),
-        QDir::cleanPath(appDir + "/../../" + relativePath)
-    };
-
-    for (const QString& candidate : candidates) {
-        const QFileInfo fileInfo(candidate);
-        if (fileInfo.exists()) {
-            return candidate;
-        }
-    }
-
-    return candidates.front();
+    return readableDataFilePath("data/schedule.json");
 }

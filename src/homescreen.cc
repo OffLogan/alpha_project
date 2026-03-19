@@ -89,6 +89,26 @@ QPixmap loadLogoPixmap()
 
     return QPixmap();
 }
+
+QPixmap buildHomeLogoPixmap(const QSize& targetSize)
+{
+    const QPixmap logoPixmap = loadLogoPixmap();
+    if (logoPixmap.isNull() || !targetSize.isValid()) {
+        return QPixmap();
+    }
+
+    const int squareSide = qMin(logoPixmap.width(), logoPixmap.height());
+    const QRect cropRect((logoPixmap.width() - squareSide) / 2,
+                         (logoPixmap.height() - squareSide) / 2,
+                         squareSide,
+                         squareSide);
+    const QPixmap squareLogo = logoPixmap.copy(cropRect);
+
+    const QSize fittedSize(qMax(1, static_cast<int>(targetSize.width() * 0.98)),
+                           qMax(1, static_cast<int>(targetSize.height() * 0.98)));
+
+    return squareLogo.scaled(fittedSize, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+}
 }
 
 homeScreen::homeScreen(QWidget *parent)
@@ -156,6 +176,26 @@ void homeScreen::showEvent(QShowEvent *event)
     taskData_.Load();
     reminderData_.Load();
     loadStoredData();
+    updateLogoLabel();
+}
+
+void homeScreen::resizeEvent(QResizeEvent *event)
+{
+    QDialog::resizeEvent(event);
+    updateLogoLabel();
+}
+
+void homeScreen::updateLogoLabel()
+{
+    const QPixmap logoPixmap = buildHomeLogoPixmap(ui->label->size());
+    if (!logoPixmap.isNull()) {
+        ui->label->setPixmap(logoPixmap);
+        ui->label->setAlignment(Qt::AlignCenter);
+        return;
+    }
+
+    ui->label->setText("Logo not found");
+    ui->label->setAlignment(Qt::AlignCenter);
 }
 
 void homeScreen::loadStoredData()

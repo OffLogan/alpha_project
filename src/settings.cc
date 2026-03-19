@@ -15,8 +15,3 @@ settings::~settings()
 {
     delete ui;
 }
-
-//Constructor
-
-Settings::Settings() //Default system settings
-    :   theme_("dark"), language_("english"), fontSize_(12), notificationsStatus_(false){}

@@ -32,6 +32,10 @@ Makefile*
 *.qm
 *.prl
 
+# Build artifacts
+build/
+*.app/
+
 # Qt unit tests
 target_wrapper.*
 
@@ -52,3 +56,6 @@ compile_commands.json
 *creator.user*
 
 *_qmlcache.qrc
+
+# macOS local files
+.DS_Store

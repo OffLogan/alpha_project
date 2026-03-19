@@ -2,6 +2,7 @@
 #define HOMESCREEN_H
 
 #include <QDialog>
+#include <QResizeEvent>
 #include <QShowEvent>
 #include <QListWidgetItem>
 
@@ -25,6 +26,7 @@ public:
 
 protected:
     void showEvent(QShowEvent *event) override;
+    void resizeEvent(QResizeEvent *event) override;
 
 private slots:
     void addTask();
@@ -36,6 +38,7 @@ private slots:
     void openSchedule();
 
 private:
+    void updateLogoLabel();
     void loadStoredData();
     void appendTaskItem(const Task& task);
     void appendReminderItem(const Reminder& reminder);

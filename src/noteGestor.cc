@@ -2,8 +2,8 @@
 //Implementation file for the note gestor class
 
 #include "../include/noteGestor.h"
+#include "../include/appPaths.h"
 
-#include <QCoreApplication>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -11,33 +11,6 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QString>
-
-namespace {
-QString resolvedDataPath(const std::string& filePath)
-{
-    const QString configuredPath = QString::fromStdString(filePath);
-    const QFileInfo directInfo(configuredPath);
-    if (directInfo.exists() || directInfo.isAbsolute()) {
-        return directInfo.filePath();
-    }
-
-    const QString applicationPath = QCoreApplication::applicationDirPath();
-    const QStringList candidatePaths = {
-        QDir::cleanPath(QDir::current().absoluteFilePath(configuredPath)),
-        QDir::cleanPath(applicationPath + "/../" + configuredPath),
-        QDir::cleanPath(applicationPath + "/../../" + configuredPath),
-        QDir::cleanPath(applicationPath + "/../../../" + configuredPath)
-    };
-
-    for (const QString& candidate : candidatePaths) {
-        if (QFileInfo::exists(candidate)) {
-            return candidate;
-        }
-    }
-
-    return candidatePaths.back();
-}
-}
 
 NoteData::NoteData(const std::string& filePath)
     : notes_(), indexById_(), filePath_(filePath) {}
@@ -58,7 +31,7 @@ void NoteData::RebuildIndex()
 
 bool NoteData::Load()
 {
-    QFile file(resolvedDataPath(filePath_));
+    QFile file(readableDataFilePath(filePath_));
 
     if (!file.exists()) {
         notes_.clear();
@@ -145,20 +118,34 @@ bool NoteData::Update()
     rootObject.insert("version", 1);
     rootObject.insert("items", items);
 
-    const QString outputPath = resolvedDataPath(filePath_);
-    const QFileInfo fileInfo(outputPath);
-    QDir().mkpath(fileInfo.path());
+    const QJsonDocument document(rootObject);
+    const QByteArray payload = document.toJson(QJsonDocument::Indented);
 
-    QFile file(outputPath);
-    if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+    auto writeJsonFile = [&](const QString& outputPath) {
+        const QFileInfo fileInfo(outputPath);
+        QDir().mkpath(fileInfo.path());
+
+        QFile file(outputPath);
+        if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+            return false;
+        }
+
+        const qint64 writtenBytes = file.write(payload);
+        file.close();
+        return writtenBytes != -1;
+    };
+
+    const QString outputPath = writableDataFilePath(filePath_);
+    if (!writeJsonFile(outputPath)) {
         return false;
     }
 
-    const QJsonDocument document(rootObject);
-    const qint64 writtenBytes = file.write(document.toJson(QJsonDocument::Indented));
-    file.close();
+    const QString legacyPath = legacyReadableDataFilePath(filePath_);
+    if (!legacyPath.isEmpty() && legacyPath != outputPath && !writeJsonFile(legacyPath)) {
+        return false;
+    }
 
-    return writtenBytes != -1;
+    return true;
 }
 
 int NoteData::NextId() const
