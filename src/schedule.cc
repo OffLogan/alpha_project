@@ -3,17 +3,66 @@
 #include "ui_schedule.h"
 
 #include <QDir>
+#include <QFileDialog>
 #include <QFile>
 #include <QFileInfo>
 #include <QHeaderView>
 #include <QJsonArray>
 #include <QJsonDocument>
+#include <QJsonParseError>
 #include <QJsonObject>
 #include <QLineEdit>
 #include <QMessageBox>
 #include <QPushButton>
 #include <QSignalBlocker>
+#include <QStandardPaths>
 #include <QTableWidgetItem>
+#include <QVector>
+
+namespace {
+QString normalizedScheduleDay(const QString& rawDay)
+{
+    const QString day = rawDay.trimmed();
+
+    if (day.compare("monday", Qt::CaseInsensitive) == 0 || day.compare("lunes", Qt::CaseInsensitive) == 0) {
+        return "Monday";
+    }
+    if (day.compare("tuesday", Qt::CaseInsensitive) == 0 || day.compare("martes", Qt::CaseInsensitive) == 0) {
+        return "Tuesday";
+    }
+    if (day.compare("wednesday", Qt::CaseInsensitive) == 0 || day.compare("miercoles", Qt::CaseInsensitive) == 0
+        || day.compare("miércoles", Qt::CaseInsensitive) == 0) {
+        return "Wednesday";
+    }
+    if (day.compare("thursday", Qt::CaseInsensitive) == 0 || day.compare("jueves", Qt::CaseInsensitive) == 0) {
+        return "Thursday";
+    }
+    if (day.compare("friday", Qt::CaseInsensitive) == 0 || day.compare("viernes", Qt::CaseInsensitive) == 0) {
+        return "Friday";
+    }
+    if (day.compare("saturday", Qt::CaseInsensitive) == 0 || day.compare("sabado", Qt::CaseInsensitive) == 0
+        || day.compare("sábado", Qt::CaseInsensitive) == 0) {
+        return "Saturday";
+    }
+    if (day.compare("sunday", Qt::CaseInsensitive) == 0 || day.compare("domingo", Qt::CaseInsensitive) == 0) {
+        return "Sunday";
+    }
+
+    return day;
+}
+
+void presentWindow(QWidget* window)
+{
+    if (window == nullptr) {
+        return;
+    }
+
+    window->show();
+    window->raise();
+    window->activateWindow();
+    window->setFocus(Qt::OtherFocusReason);
+}
+}
 
 schedule::schedule(QWidget *parent)
     : QMainWindow(parent)
@@ -34,6 +83,8 @@ schedule::schedule(QWidget *parent)
     connect(ui->addEntryButton, &QPushButton::clicked, this, &schedule::addEntry);
     connect(ui->deleteEntryButton, &QPushButton::clicked, this, &schedule::deleteSelectedEntry);
     connect(ui->saveScheduleButton, &QPushButton::clicked, this, &schedule::saveSchedule);
+    connect(ui->exportScheduleButton, &QPushButton::clicked, this, &schedule::exportSchedule);
+    connect(ui->importScheduleButton, &QPushButton::clicked, this, &schedule::importSchedule);
     connect(ui->clearScheduleButton, &QPushButton::clicked, this, &schedule::clearSchedule);
     connect(ui->scheduleTableWidget, &QTableWidget::itemChanged, this, [this](QTableWidgetItem*) {
         writeSchedule(false);
@@ -54,11 +105,11 @@ void schedule::load()
 
 void schedule::goBackHome()
 {
-    if (parentWidget() != nullptr) {
-        parentWidget()->show();
-    }
-
     hide();
+
+    if (parentWidget() != nullptr) {
+        presentWindow(parentWidget());
+    }
 }
 
 void schedule::addEntry()
@@ -95,7 +146,68 @@ void schedule::saveSchedule()
     writeSchedule(true);
 }
 
+void schedule::exportSchedule()
+{
+    const QString exportPath = defaultExportSchedulePath();
+    if (!writeScheduleToFile(exportPath)) {
+        QMessageBox::warning(this, "Schedule", "Could not export the schedule.");
+        return;
+    }
+
+    QMessageBox::information(this, "Schedule", QString("Schedule exported to:\n%1").arg(exportPath));
+}
+
+void schedule::importSchedule()
+{
+    QString downloadsDir = QStandardPaths::writableLocation(QStandardPaths::DownloadLocation);
+    if (downloadsDir.trimmed().isEmpty()) {
+        downloadsDir = QDir::homePath();
+    }
+
+    const QString filePath = QFileDialog::getOpenFileName(
+        this,
+        "Import schedule",
+        downloadsDir,
+        "JSON files (*.json);;All files (*)"
+    );
+
+    if (filePath.trimmed().isEmpty()) {
+        return;
+    }
+
+    if (!loadScheduleFromFile(filePath, true)) {
+        return;
+    }
+
+    if (!writeSchedule(false)) {
+        return;
+    }
+
+    QMessageBox::information(this, "Schedule", "Schedule imported successfully.");
+}
+
 bool schedule::writeSchedule(bool showSuccessMessage)
+{
+    const QString filePath = writableDataFilePath("data/schedule.json");
+    if (!writeScheduleToFile(filePath)) {
+        QMessageBox::warning(this, "Schedule", "Could not save the schedule.");
+        return false;
+    }
+
+    const QString legacyPath = legacyReadableDataFilePath("data/schedule.json");
+    if (!legacyPath.isEmpty() && legacyPath != filePath && !writeScheduleToFile(legacyPath)) {
+        QMessageBox::warning(this, "Schedule", "Could not save the schedule.");
+        return false;
+    }
+
+    if (showSuccessMessage) {
+        QMessageBox::information(this, "Schedule", "Schedule saved successfully.");
+    }
+
+    return true;
+}
+
+bool schedule::writeScheduleToFile(const QString& filePath)
 {
     QJsonArray items;
 
@@ -122,35 +234,15 @@ bool schedule::writeSchedule(bool showSuccessMessage)
 
     const QByteArray payload = QJsonDocument(root).toJson(QJsonDocument::Indented);
 
-    auto writeJsonFile = [&](const QString& filePath) {
-        QDir().mkpath(QFileInfo(filePath).path());
-        QFile file(filePath);
-        if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
-            return false;
-        }
-
-        const qint64 writtenBytes = file.write(payload);
-        file.close();
-        return writtenBytes != -1;
-    };
-
-    const QString filePath = writableDataFilePath("data/schedule.json");
-    if (!writeJsonFile(filePath)) {
-        QMessageBox::warning(this, "Schedule", "Could not save the schedule.");
+    QDir().mkpath(QFileInfo(filePath).path());
+    QFile file(filePath);
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
         return false;
     }
 
-    const QString legacyPath = legacyReadableDataFilePath("data/schedule.json");
-    if (!legacyPath.isEmpty() && legacyPath != filePath && !writeJsonFile(legacyPath)) {
-        QMessageBox::warning(this, "Schedule", "Could not save the schedule.");
-        return false;
-    }
-
-    if (showSuccessMessage) {
-        QMessageBox::information(this, "Schedule", "Schedule saved successfully.");
-    }
-
-    return true;
+    const qint64 writtenBytes = file.write(payload);
+    file.close();
+    return writtenBytes != -1;
 }
 
 void schedule::clearSchedule()
@@ -173,27 +265,57 @@ void schedule::clearSchedule()
 
 void schedule::loadSchedule()
 {
-    QFile file(scheduleFilePath());
-    const QSignalBlocker blocker(ui->scheduleTableWidget);
-    ui->scheduleTableWidget->setRowCount(0);
+    loadScheduleFromFile(scheduleFilePath(), true);
+}
 
+bool schedule::loadScheduleFromFile(const QString& filePath, bool showErrorMessage)
+{
+    QFile file(filePath);
     if (!file.exists()) {
-        return;
+        return true;
     }
 
     if (!file.open(QIODevice::ReadOnly)) {
-        QMessageBox::warning(this, "Schedule", "Could not open the saved schedule.");
-        return;
+        if (showErrorMessage) {
+            QMessageBox::warning(this, "Schedule", "Could not open the schedule file.");
+        }
+        return false;
     }
 
-    const QJsonDocument document = QJsonDocument::fromJson(file.readAll());
+    QJsonParseError parseError;
+    const QJsonDocument document = QJsonDocument::fromJson(file.readAll(), &parseError);
     file.close();
 
-    if (!document.isObject()) {
-        return;
+    if (parseError.error != QJsonParseError::NoError) {
+        if (showErrorMessage) {
+            QMessageBox::warning(
+                this,
+                "Schedule",
+                QString("The selected file is not valid JSON.\n%1").arg(parseError.errorString())
+            );
+        }
+        return false;
     }
 
-    const QJsonArray items = document.object().value("items").toArray();
+    QJsonArray items;
+    if (document.isObject()) {
+        items = document.object().value("items").toArray();
+    } else if (document.isArray()) {
+        items = document.array();
+    } else {
+        if (showErrorMessage) {
+            QMessageBox::warning(this, "Schedule", "The selected file does not contain a valid schedule structure.");
+        }
+        return false;
+    }
+
+    struct ScheduleRow {
+        QString day;
+        QString time;
+        QString subject;
+        QString location;
+    };
+    QVector<ScheduleRow> rows;
 
     for (const QJsonValue& value : items) {
         if (!value.isObject()) {
@@ -201,11 +323,31 @@ void schedule::loadSchedule()
         }
 
         const QJsonObject item = value.toObject();
-        appendRow(item.value("day").toString(),
-                  item.value("time").toString(),
-                  item.value("subject").toString(),
-                  item.value("location").toString());
+        const QString day = normalizedScheduleDay(item.value("day").toString());
+        const QString time = item.value("time").toString().trimmed();
+        const QString subject = item.value("subject").toString().trimmed();
+        const QString location = item.value("location").toString().trimmed();
+
+        if (day.isEmpty() || time.isEmpty() || subject.isEmpty()) {
+            continue;
+        }
+
+        rows.push_back({
+            day,
+            time,
+            subject,
+            location
+        });
     }
+
+    const QSignalBlocker blocker(ui->scheduleTableWidget);
+    ui->scheduleTableWidget->setRowCount(0);
+
+    for (const ScheduleRow& row : rows) {
+        appendRow(row.day, row.time, row.subject, row.location);
+    }
+
+    return true;
 }
 
 void schedule::appendRow(const QString& day,
@@ -232,4 +374,23 @@ void schedule::clearInputs()
 QString schedule::scheduleFilePath() const
 {
     return readableDataFilePath("data/schedule.json");
+}
+
+QString schedule::defaultExportSchedulePath() const
+{
+    QString downloadsDir = QStandardPaths::writableLocation(QStandardPaths::DownloadLocation);
+    if (downloadsDir.trimmed().isEmpty()) {
+        downloadsDir = QDir::homePath();
+    }
+
+    QDir directory(downloadsDir);
+    QString candidate = directory.filePath("schedule_export.json");
+    int suffix = 1;
+
+    while (QFileInfo::exists(candidate)) {
+        candidate = directory.filePath(QString("schedule_export_%1.json").arg(suffix));
+        ++suffix;
+    }
+
+    return candidate;
 }

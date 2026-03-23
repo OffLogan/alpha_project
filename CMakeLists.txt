@@ -67,7 +67,15 @@ set(APP_MAIN
 )
 
 set(APP_ICON_PNG
+    "${CMAKE_CURRENT_SOURCE_DIR}/resources/kmn_app_icon.png"
+)
+
+set(APP_HOME_LOGO_PNG
     "${CMAKE_CURRENT_SOURCE_DIR}/resources/kmn_logo.PNG"
+)
+
+set(APP_ICON_ICNS
+    "${CMAKE_CURRENT_SOURCE_DIR}/resources/kmn_logo.icns"
 )
 
 if(EXISTS "${APP_MAIN}")
@@ -80,11 +88,17 @@ if(EXISTS "${APP_MAIN}")
 
     if(APPLE)
         set_source_files_properties("${APP_ICON_PNG}" PROPERTIES MACOSX_PACKAGE_LOCATION "Resources")
+        set_source_files_properties("${APP_HOME_LOGO_PNG}" PROPERTIES MACOSX_PACKAGE_LOCATION "Resources")
+        target_sources(alpha_project_app PRIVATE "${APP_HOME_LOGO_PNG}")
+        if(EXISTS "${APP_ICON_ICNS}")
+            target_sources(alpha_project_app PRIVATE "${APP_ICON_ICNS}")
+            set_source_files_properties("${APP_ICON_ICNS}" PROPERTIES MACOSX_PACKAGE_LOCATION "Resources")
+        endif()
         set_target_properties(alpha_project_app PROPERTIES
             MACOSX_BUNDLE TRUE
             MACOSX_BUNDLE_BUNDLE_NAME "KMN Space"
             MACOSX_BUNDLE_GUI_IDENTIFIER "com.kmnspace.app"
-            MACOSX_BUNDLE_ICON_FILE "kmn_logo.PNG"
+            MACOSX_BUNDLE_ICON_FILE "kmn_app_icon.png"
         )
     endif()
 else()

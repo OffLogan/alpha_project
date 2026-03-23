@@ -34,6 +34,18 @@ QString downloadsFilePath(const QString& baseName, const QString& extension)
 
     return candidate;
 }
+
+void presentWindow(QWidget* window)
+{
+    if (window == nullptr) {
+        return;
+    }
+
+    window->show();
+    window->raise();
+    window->activateWindow();
+    window->setFocus(Qt::OtherFocusReason);
+}
 }
 
 notes::notes(QWidget *parent)
@@ -65,11 +77,11 @@ notes::~notes()
 
 void notes::goBackHome()
 {
-    if (parentWidget() != nullptr) {
-        parentWidget()->show();
-    }
-
     hide();
+
+    if (parentWidget() != nullptr) {
+        presentWindow(parentWidget());
+    }
 }
 
 void notes::createNote()

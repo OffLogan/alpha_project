@@ -73,8 +73,11 @@ QPixmap loadLogoPixmap()
     const QStringList candidates = {
         QDir::current().filePath("resources/kmn_logo.PNG"),
         QDir(appDir).filePath("resources/kmn_logo.PNG"),
+        QDir(appDir).filePath("../Resources/kmn_logo.PNG"),
         QDir(appDir).filePath("../resources/kmn_logo.PNG"),
+        QDir(appDir).filePath("../../Resources/kmn_logo.PNG"),
         QDir(appDir).filePath("../../resources/kmn_logo.PNG"),
+        QDir(appDir).filePath("../../../Resources/kmn_logo.PNG"),
         QDir(appDir).filePath("../../../resources/kmn_logo.PNG")
     };
 
@@ -97,17 +100,42 @@ QPixmap buildHomeLogoPixmap(const QSize& targetSize)
         return QPixmap();
     }
 
-    const int squareSide = qMin(logoPixmap.width(), logoPixmap.height());
-    const QRect cropRect((logoPixmap.width() - squareSide) / 2,
-                         (logoPixmap.height() - squareSide) / 2,
-                         squareSide,
-                         squareSide);
-    const QPixmap squareLogo = logoPixmap.copy(cropRect);
+    QPixmap displayPixmap = logoPixmap;
+    const QImage logoImage = logoPixmap.toImage();
+    QRect nonTransparentBounds;
+
+    for (int y = 0; y < logoImage.height(); ++y) {
+        for (int x = 0; x < logoImage.width(); ++x) {
+            if (qAlpha(logoImage.pixel(x, y)) > 0) {
+                if (nonTransparentBounds.isNull()) {
+                    nonTransparentBounds = QRect(x, y, 1, 1);
+                } else {
+                    nonTransparentBounds = nonTransparentBounds.united(QRect(x, y, 1, 1));
+                }
+            }
+        }
+    }
+
+    if (!nonTransparentBounds.isNull()) {
+        displayPixmap = logoPixmap.copy(nonTransparentBounds);
+    }
 
     const QSize fittedSize(qMax(1, static_cast<int>(targetSize.width() * 0.98)),
                            qMax(1, static_cast<int>(targetSize.height() * 0.98)));
 
-    return squareLogo.scaled(fittedSize, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+    return displayPixmap.scaled(fittedSize, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+}
+
+void presentWindow(QWidget* window)
+{
+    if (window == nullptr) {
+        return;
+    }
+
+    window->show();
+    window->raise();
+    window->activateWindow();
+    window->setFocus(Qt::OtherFocusReason);
 }
 }
 
@@ -133,6 +161,8 @@ homeScreen::homeScreen(QWidget *parent)
     ui->textEdit_2->document()->setDocumentMargin(6);
     ui->textEdit->setStyleSheet("QTextEdit { color: white; padding-top: 2px; padding-bottom: 2px; }");
     ui->textEdit_2->setStyleSheet("QTextEdit { color: white; padding-top: 2px; padding-bottom: 2px; }");
+    ui->label->setAttribute(Qt::WA_TransparentForMouseEvents, true);
+    ui->label_8->setAttribute(Qt::WA_TransparentForMouseEvents, true);
 
     taskData_.Load();
     reminderData_.Load();
@@ -154,9 +184,9 @@ homeScreen::homeScreen(QWidget *parent)
     ui->lineEdit_3->setStyleSheet("QLineEdit { color: white; padding-top: 2px; padding-bottom: 2px; }");
     ui->lineEdit_5->setStyleSheet("QLineEdit { color: white; padding-top: 2px; padding-bottom: 2px; }");
 
-    const QPixmap logoPixmap = loadLogoPixmap();
+    const QPixmap logoPixmap = buildHomeLogoPixmap(ui->label->size());
     if (!logoPixmap.isNull()) {
-        ui->label->setPixmap(logoPixmap.scaled(ui->label->size(), Qt::KeepAspectRatio, Qt::SmoothTransformation));
+        ui->label->setPixmap(logoPixmap);
         ui->label->setAlignment(Qt::AlignCenter);
     } else {
         ui->label->setText("Logo not found");
@@ -363,7 +393,7 @@ void homeScreen::openNotes()
     }
 
     hide();
-    notesWindow_->show();
+    presentWindow(notesWindow_);
 }
 
 void homeScreen::openSchedule()
@@ -374,5 +404,5 @@ void homeScreen::openSchedule()
 
     scheduleWindow_->load();
     hide();
-    scheduleWindow_->show();
+    presentWindow(scheduleWindow_);
 }

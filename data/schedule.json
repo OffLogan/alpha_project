@@ -1,5 +1,95 @@
 {
     "items": [
+        {
+            "day": "Monday",
+            "location": "B1",
+            "subject": "FEC",
+            "time": "08:30 - 10:00"
+        },
+        {
+            "day": "Monday",
+            "location": "B1",
+            "subject": "Circuitos",
+            "time": "10:00 - 11:30"
+        },
+        {
+            "day": "Monday",
+            "location": "P10",
+            "subject": "PAS",
+            "time": "11:30 - 13:00"
+        },
+        {
+            "day": "Monday",
+            "location": "B3 Ramon y cajal",
+            "subject": "ED",
+            "time": "16:00 - 18:00"
+        },
+        {
+            "day": "Monday",
+            "location": "Leonardo DaVinci",
+            "subject": "FEC",
+            "time": "18:00 - 20:00"
+        },
+        {
+            "day": "Tuesday",
+            "location": "Leonardo DaVinci",
+            "subject": "MP",
+            "time": "10:00 - 11:30"
+        },
+        {
+            "day": "Tuesday",
+            "location": "B16",
+            "subject": "FEC",
+            "time": "12:00 - 14:00"
+        },
+        {
+            "day": "Wednesday",
+            "location": "B1",
+            "subject": "Circuitos",
+            "time": "10:00 - 11:30"
+        },
+        {
+            "day": "Wednesday",
+            "location": "P10",
+            "subject": "ED",
+            "time": "11:30 - 13:00"
+        },
+        {
+            "day": "Thursday",
+            "location": "S2 Ramon y cajal",
+            "subject": "PAS",
+            "time": "09:00 - 11:00"
+        },
+        {
+            "day": "Thursday",
+            "location": "B1",
+            "subject": "FEC",
+            "time": "10:00 - 11:30"
+        },
+        {
+            "day": "Thursday",
+            "location": "Leonardo DaVinci",
+            "subject": "Circuitos",
+            "time": "12:00 - 14:00"
+        },
+        {
+            "day": "Friday",
+            "location": "B1",
+            "subject": "MP",
+            "time": "10:00 - 11:30"
+        },
+        {
+            "day": "Friday",
+            "location": "P10",
+            "subject": "ED",
+            "time": "11:30 - 13:00"
+        },
+        {
+            "day": "Friday",
+            "location": "P10",
+            "subject": "PAS",
+            "time": "13:00 - 14:30"
+        }
     ],
     "version": 1
 }

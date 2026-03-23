@@ -23,10 +23,14 @@ private slots:
     void addEntry();
     void deleteSelectedEntry();
     void saveSchedule();
+    void exportSchedule();
+    void importSchedule();
     void clearSchedule();
 
 private:
     bool writeSchedule(bool showSuccessMessage);
+    bool writeScheduleToFile(const QString& filePath);
+    bool loadScheduleFromFile(const QString& filePath, bool showErrorMessage);
     void loadSchedule();
     void appendRow(const QString& day,
                    const QString& time,
@@ -34,6 +38,7 @@ private:
                    const QString& location);
     void clearInputs();
     QString scheduleFilePath() const;
+    QString defaultExportSchedulePath() const;
 
     Ui::schedule *ui;
 };

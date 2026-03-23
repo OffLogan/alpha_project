@@ -170,9 +170,9 @@
    <widget class="QPushButton" name="saveScheduleButton">
     <property name="geometry">
      <rect>
-      <x>760</x>
+      <x>590</x>
       <y>650</y>
-      <width>141</width>
+      <width>111</width>
       <height>32</height>
      </rect>
     </property>
@@ -180,12 +180,38 @@
      <string>Save schedule</string>
     </property>
    </widget>
+   <widget class="QPushButton" name="exportScheduleButton">
+    <property name="geometry">
+     <rect>
+      <x>720</x>
+      <y>650</y>
+      <width>111</width>
+      <height>32</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Export</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="importScheduleButton">
+    <property name="geometry">
+     <rect>
+      <x>850</x>
+      <y>650</y>
+      <width>111</width>
+      <height>32</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Import</string>
+    </property>
+   </widget>
    <widget class="QPushButton" name="clearScheduleButton">
     <property name="geometry">
      <rect>
-      <x>920</x>
+      <x>980</x>
       <y>650</y>
-      <width>141</width>
+      <width>81</width>
       <height>32</height>
      </rect>
     </property>

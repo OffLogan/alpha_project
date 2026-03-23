@@ -17,13 +17,18 @@
 namespace {
 QPixmap loadBaseLogoPixmap()
 {
-    const QPixmap resourcePixmap(":/images/kmn_logo.PNG");
+    const QPixmap resourcePixmap(":/images/kmn_app_icon.png");
     if (!resourcePixmap.isNull()) {
         return resourcePixmap;
     }
 
     const QString appDir = QCoreApplication::applicationDirPath();
     const QStringList candidates = {
+        QDir::current().filePath("resources/kmn_app_icon.png"),
+        QDir(appDir).filePath("resources/kmn_app_icon.png"),
+        QDir(appDir).filePath("../resources/kmn_app_icon.png"),
+        QDir(appDir).filePath("../../resources/kmn_app_icon.png"),
+        QDir(appDir).filePath("../../../resources/kmn_app_icon.png"),
         QDir::current().filePath("resources/kmn_logo.PNG"),
         QDir(appDir).filePath("resources/kmn_logo.PNG"),
         QDir(appDir).filePath("../resources/kmn_logo.PNG"),
@@ -76,7 +81,7 @@ QIcon loadAppIcon()
         painter.setRenderHint(QPainter::Antialiasing, true);
         painter.setRenderHint(QPainter::SmoothPixmapTransform, true);
 
-        const QSize targetSize(size.width() * 0.9, size.height() * 0.9);
+        const QSize targetSize(size);
         const QPixmap scaledLogo = squareLogo.scaled(targetSize, Qt::KeepAspectRatio, Qt::SmoothTransformation);
         const int x = (size.width() - scaledLogo.width()) / 2;
         const int y = (size.height() - scaledLogo.height()) / 2;

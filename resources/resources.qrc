@@ -1,5 +1,6 @@
 <RCC>
     <qresource prefix="/">
         <file alias="images/kmn_logo.PNG">kmn_logo.PNG</file>
+        <file alias="images/kmn_app_icon.png">kmn_app_icon.png</file>
     </qresource>
 </RCC>
