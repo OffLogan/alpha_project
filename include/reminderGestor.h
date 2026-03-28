@@ -25,6 +25,9 @@ class ReminderData{
         int NextId() const;
         bool AddReminder(const Reminder& reminder);
         bool RemoveReminder(const int id);
+        bool UpdateReminder(const Reminder& reminder);
+        Reminder* FindById(int id);
+        const Reminder* FindById(int id) const;
 };
 
 #endif

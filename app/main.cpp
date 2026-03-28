@@ -13,6 +13,7 @@
 
 #include "../include/appPaths.h"
 #include "../include/homescreen.h"
+#include "../include/settings.h"
 
 namespace {
 QPixmap loadBaseLogoPixmap()
@@ -136,8 +137,10 @@ int main(int argc, char *argv[])
     app.setApplicationName("KMN Space");
     app.setApplicationDisplayName("KMN Space");
     app.setDesktopFileName("KMN Space");
+    app.setApplicationVersion("0.0.3");
     const QIcon appIcon = loadAppIcon();
     app.setWindowIcon(appIcon);
+    settings::applyAppSettings(app);
 
     homeScreen window;
     window.setWindowTitle("KMN Space");

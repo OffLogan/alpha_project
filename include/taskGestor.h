@@ -27,6 +27,9 @@ class TaskData{
         int NextId() const;
         bool AddTask(const Task& task);
         bool RemoveTask(const int id);
+        bool UpdateTask(const Task& task);
+        Task* FindById(int id);
+        const Task* FindById(int id) const;
 };
 
 

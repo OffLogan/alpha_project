@@ -3,6 +3,7 @@
 #include "ui_schedule.h"
 
 #include <QDir>
+#include <QEvent>
 #include <QFileDialog>
 #include <QFile>
 #include <QFileInfo>
@@ -13,6 +14,7 @@
 #include <QJsonObject>
 #include <QLineEdit>
 #include <QMessageBox>
+#include <QMouseEvent>
 #include <QPushButton>
 #include <QSignalBlocker>
 #include <QStandardPaths>
@@ -69,8 +71,13 @@ schedule::schedule(QWidget *parent)
     , ui(new Ui::schedule)
 {
     ui->setupUi(this);
+    ui->centralwidget->installEventFilter(this);
 
     ui->dayComboBox->addItems({"Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"});
+    ui->dayComboBox->setStyleSheet(
+        "QComboBox { padding-left: 10px; padding-right: 28px; }"
+        "QComboBox QAbstractItemView { padding: 4px; }"
+    );
     ui->scheduleTableWidget->setColumnCount(4);
     ui->scheduleTableWidget->setHorizontalHeaderLabels({"Day", "Time", "Subject", "Location"});
     ui->scheduleTableWidget->horizontalHeader()->setStretchLastSection(true);
@@ -101,6 +108,21 @@ schedule::~schedule()
 void schedule::load()
 {
     loadSchedule();
+}
+
+bool schedule::eventFilter(QObject* watched, QEvent* event)
+{
+    if (watched == ui->centralwidget && event != nullptr && event->type() == QEvent::MouseButtonPress) {
+        QMouseEvent* mouseEvent = static_cast<QMouseEvent*>(event);
+        const QPoint tablePosition = ui->scheduleTableWidget->mapFrom(ui->centralwidget, mouseEvent->pos());
+
+        if (!ui->scheduleTableWidget->rect().contains(tablePosition)) {
+            ui->scheduleTableWidget->clearSelection();
+            ui->scheduleTableWidget->setCurrentCell(-1, -1);
+        }
+    }
+
+    return QMainWindow::eventFilter(watched, event);
 }
 
 void schedule::goBackHome()

@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(alpha_project VERSION 0.0.1 LANGUAGES CXX)
+project(alpha_project VERSION 0.0.3 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -26,7 +26,7 @@ if(NOT PROJECT_HEADERS AND NOT PROJECT_SOURCES)
     message(FATAL_ERROR "No source files were found in include/ or src/")
 endif()
 
-add_library(alpha_project_lib STATIC
+add_library(alpha_project_lib OBJECT
     ${PROJECT_HEADERS}
     ${PROJECT_SOURCES}
     resources/resources.qrc
@@ -82,8 +82,13 @@ if(EXISTS "${APP_MAIN}")
     add_executable(alpha_project_app
         "${APP_MAIN}"
         "${APP_ICON_PNG}"
+        $<TARGET_OBJECTS:alpha_project_lib>
     )
-    target_link_libraries(alpha_project_app PRIVATE alpha_project_lib)
+    target_link_libraries(alpha_project_app
+        PRIVATE
+            Qt6::Widgets
+            Qt6::PrintSupport
+    )
     set_target_properties(alpha_project_app PROPERTIES OUTPUT_NAME "KMN Space")
 
     if(APPLE)
@@ -108,10 +113,12 @@ endif()
 if(BUILD_TESTING)
     add_executable(alpha_project_smoke_tests
         tests/basic_smoke_tests.cc
+        $<TARGET_OBJECTS:alpha_project_lib>
     )
     target_link_libraries(alpha_project_smoke_tests
         PRIVATE
-            alpha_project_lib
+            Qt6::Widgets
+            Qt6::PrintSupport
             Qt6::Test
     )
     add_test(NAME alpha_project_smoke_tests COMMAND alpha_project_smoke_tests)

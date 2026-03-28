@@ -18,6 +18,9 @@ public:
     ~schedule();
     void load();
 
+protected:
+    bool eventFilter(QObject* watched, QEvent* event) override;
+
 private slots:
     void goBackHome();
     void addEntry();

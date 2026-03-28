@@ -181,3 +181,34 @@ bool ReminderData::RemoveReminder(const int id)
     RebuildIndex();
     return Update();
 }
+
+bool ReminderData::UpdateReminder(const Reminder& reminder)
+{
+    const auto foundReminder = indexById_.find(reminder.GetTaskId());
+    if (foundReminder == indexById_.end()) {
+        return false;
+    }
+
+    reminders_[foundReminder->second] = reminder;
+    return Update();
+}
+
+Reminder* ReminderData::FindById(int id)
+{
+    const auto foundReminder = indexById_.find(id);
+    if (foundReminder == indexById_.end()) {
+        return nullptr;
+    }
+
+    return &reminders_[foundReminder->second];
+}
+
+const Reminder* ReminderData::FindById(int id) const
+{
+    const auto foundReminder = indexById_.find(id);
+    if (foundReminder == indexById_.end()) {
+        return nullptr;
+    }
+
+    return &reminders_[foundReminder->second];
+}

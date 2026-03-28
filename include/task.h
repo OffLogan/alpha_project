@@ -27,6 +27,7 @@ class Task{
         bool SetDescription(const std::string& description);
         void SetStatus(const bool status);
         void CompleteTask();
+        void ReopenTask();
 };
 
 

@@ -6,68 +6,152 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1101</width>
-    <height>705</height>
+    <width>640</width>
+    <height>360</height>
    </rect>
   </property>
   <property name="windowTitle">
-   <string>Dialog</string>
+   <string>Settings</string>
   </property>
-  <widget class="QDialogButtonBox" name="buttonBox">
-   <property name="geometry">
-    <rect>
-     <x>850</x>
-     <y>70</y>
-     <width>81</width>
-     <height>241</height>
-    </rect>
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <property name="spacing">
+    <number>14</number>
    </property>
-   <property name="orientation">
-    <enum>Qt::Orientation::Vertical</enum>
+   <property name="leftMargin">
+    <number>24</number>
    </property>
-   <property name="standardButtons">
-    <set>QDialogButtonBox::StandardButton::Cancel|QDialogButtonBox::StandardButton::Ok</set>
+   <property name="topMargin">
+    <number>24</number>
    </property>
-  </widget>
-  <widget class="QLabel" name="label">
-   <property name="geometry">
-    <rect>
-     <x>470</x>
-     <y>40</y>
-     <width>281</width>
-     <height>101</height>
-    </rect>
+   <property name="rightMargin">
+    <number>24</number>
    </property>
-   <property name="text">
-    <string>Settings</string>
+   <property name="bottomMargin">
+    <number>24</number>
    </property>
-  </widget>
-  <widget class="QCheckBox" name="checkBox">
-   <property name="geometry">
-    <rect>
-     <x>410</x>
-     <y>150</y>
-     <width>161</width>
-     <height>20</height>
-    </rect>
-   </property>
-   <property name="text">
-    <string>Notifications ON/OFF</string>
-   </property>
-  </widget>
-  <widget class="QCheckBox" name="checkBox_2">
-   <property name="geometry">
-    <rect>
-     <x>410</x>
-     <y>180</y>
-     <width>161</width>
-     <height>20</height>
-    </rect>
-   </property>
-   <property name="text">
-    <string>Dark mode</string>
-   </property>
-  </widget>
+   <item>
+    <widget class="QLabel" name="titleLabel">
+     <property name="text">
+      <string>Application Settings</string>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">font-size: 24px; font-weight: 700;</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLabel" name="subtitleLabel">
+     <property name="text">
+      <string>Configure theme, notifications and local storage information.</string>
+     </property>
+     <property name="wordWrap">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="contentLayout">
+     <property name="spacing">
+      <number>18</number>
+     </property>
+     <item>
+      <widget class="QGroupBox" name="preferencesGroupBox">
+       <property name="title">
+        <string>Preferences</string>
+       </property>
+       <layout class="QVBoxLayout" name="preferencesLayout">
+        <property name="spacing">
+         <number>12</number>
+        </property>
+        <item>
+         <widget class="QCheckBox" name="notificationsCheckBox">
+          <property name="text">
+           <string>Enable notifications</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QCheckBox" name="darkModeCheckBox">
+          <property name="text">
+           <string>Dark mode</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <spacer name="verticalSpacer">
+          <property name="orientation">
+           <enum>Qt::Vertical</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>20</width>
+            <height>40</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+       </layout>
+      </widget>
+     </item>
+     <item>
+      <widget class="QGroupBox" name="informationGroupBox">
+       <property name="title">
+        <string>Application Info</string>
+       </property>
+       <layout class="QFormLayout" name="formLayout">
+        <property name="labelAlignment">
+         <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
+        </property>
+        <item row="0" column="0">
+         <widget class="QLabel" name="versionLabel">
+          <property name="text">
+           <string>Version</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="1">
+         <widget class="QLabel" name="versionValueLabel">
+          <property name="text">
+           <string>-</string>
+          </property>
+          <property name="wordWrap">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="0">
+         <widget class="QLabel" name="dataPathLabel">
+          <property name="text">
+           <string>Data path</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="1">
+         <widget class="QLabel" name="dataPathValueLabel">
+          <property name="text">
+           <string>-</string>
+          </property>
+          <property name="wordWrap">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="QDialogButtonBox" name="buttonBox">
+     <property name="orientation">
+      <enum>Qt::Horizontal</enum>
+     </property>
+     <property name="standardButtons">
+      <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
+     </property>
+    </widget>
+   </item>
+  </layout>
  </widget>
  <resources/>
  <connections>
@@ -78,12 +162,12 @@
    <slot>accept()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>248</x>
-     <y>254</y>
+     <x>571</x>
+     <y>321</y>
     </hint>
     <hint type="destinationlabel">
-     <x>157</x>
-     <y>274</y>
+     <x>319</x>
+     <y>179</y>
     </hint>
    </hints>
   </connection>
@@ -94,12 +178,12 @@
    <slot>reject()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>316</x>
-     <y>260</y>
+     <x>488</x>
+     <y>321</y>
     </hint>
     <hint type="destinationlabel">
-     <x>286</x>
-     <y>274</y>
+     <x>319</x>
+     <y>179</y>
     </hint>
    </hints>
   </connection>

@@ -16,14 +16,14 @@
    </font>
   </property>
   <property name="windowTitle">
-   <string>Dialog</string>
+   <string>KMN Space</string>
   </property>
   <widget class="QPushButton" name="pushButton_2">
    <property name="geometry">
     <rect>
-     <x>980</x>
+     <x>950</x>
      <y>660</y>
-     <width>100</width>
+     <width>111</width>
      <height>32</height>
     </rect>
    </property>
@@ -85,10 +85,10 @@
   <widget class="QLabel" name="label_3">
    <property name="geometry">
     <rect>
-     <x>830</x>
+     <x>836</x>
      <y>100</y>
-     <width>151</width>
-     <height>16</height>
+     <width>120</width>
+     <height>20</height>
     </rect>
    </property>
    <property name="font">
@@ -97,16 +97,19 @@
     </font>
    </property>
    <property name="text">
-    <string>New Reminders</string>
+    <string>Reminders</string>
+   </property>
+   <property name="alignment">
+    <set>Qt::AlignmentFlag::AlignCenter</set>
    </property>
   </widget>
   <widget class="QLabel" name="label_4">
    <property name="geometry">
     <rect>
-     <x>450</x>
+     <x>436</x>
      <y>100</y>
-     <width>141</width>
-     <height>16</height>
+     <width>120</width>
+     <height>20</height>
     </rect>
    </property>
    <property name="font">
@@ -115,7 +118,10 @@
     </font>
    </property>
    <property name="text">
-    <string>New Task</string>
+    <string>Tasks</string>
+   </property>
+   <property name="alignment">
+    <set>Qt::AlignmentFlag::AlignCenter</set>
    </property>
   </widget>
   <widget class="QLabel" name="label_5">
@@ -152,9 +158,9 @@
   <widget class="QLabel" name="label_7">
    <property name="geometry">
     <rect>
-     <x>85</x>
-     <y>335</y>
-     <width>151</width>
+     <x>100</x>
+     <y>390</y>
+     <width>101</width>
      <height>41</height>
     </rect>
    </property>
@@ -223,7 +229,7 @@
    <property name="geometry">
     <rect>
      <x>760</x>
-     <y>240</y>
+     <y>243</y>
      <width>271</width>
      <height>21</height>
     </rect>
@@ -275,15 +281,15 @@ li.checked::marker { content: &quot;\2612&quot;; }
   <widget class="QLabel" name="label_8">
    <property name="geometry">
     <rect>
-     <x>470</x>
-     <y>10</y>
-     <width>181</width>
+     <x>420</x>
+     <y>20</y>
+     <width>261</width>
      <height>61</height>
     </rect>
    </property>
    <property name="font">
     <font>
-     <pointsize>30</pointsize>
+     <pointsize>24</pointsize>
      <italic>false</italic>
      <bold>false</bold>
     </font>
@@ -295,10 +301,10 @@ li.checked::marker { content: &quot;\2612&quot;; }
   <widget class="QPushButton" name="pushButton_4">
    <property name="geometry">
     <rect>
-     <x>80</x>
-     <y>270</y>
-     <width>141</width>
-     <height>51</height>
+     <x>560</x>
+     <y>660</y>
+     <width>111</width>
+     <height>32</height>
     </rect>
    </property>
    <property name="text">
@@ -308,14 +314,27 @@ li.checked::marker { content: &quot;\2612&quot;; }
   <widget class="QPushButton" name="pushButton_5">
    <property name="geometry">
     <rect>
-     <x>30</x>
+     <x>690</x>
      <y>660</y>
-     <width>100</width>
+     <width>111</width>
      <height>32</height>
     </rect>
    </property>
    <property name="text">
     <string>Schedule</string>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="pushButton_6">
+   <property name="geometry">
+    <rect>
+     <x>820</x>
+     <y>660</y>
+     <width>111</width>
+     <height>32</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Completed</string>
    </property>
   </widget>
   <widget class="QLabel" name="label">

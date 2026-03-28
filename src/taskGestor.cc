@@ -176,3 +176,34 @@ bool TaskData::RemoveTask(const int id)
     RebuildIndex();
     return Update();
 }
+
+bool TaskData::UpdateTask(const Task& task)
+{
+    const auto foundTask = indexById_.find(task.GetTaskId());
+    if (foundTask == indexById_.end()) {
+        return false;
+    }
+
+    tasks_[foundTask->second] = task;
+    return Update();
+}
+
+Task* TaskData::FindById(int id)
+{
+    const auto foundTask = indexById_.find(id);
+    if (foundTask == indexById_.end()) {
+        return nullptr;
+    }
+
+    return &tasks_[foundTask->second];
+}
+
+const Task* TaskData::FindById(int id) const
+{
+    const auto foundTask = indexById_.find(id);
+    if (foundTask == indexById_.end()) {
+        return nullptr;
+    }
+
+    return &tasks_[foundTask->second];
+}

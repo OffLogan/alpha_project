@@ -42,9 +42,6 @@ bool Task::SetName(const std::string& name){
 };
 
 bool Task::SetDescription(const std::string& description){
-    if(description.empty()){
-        return false;
-    }
     description_ = description;
     return true;
 };
@@ -55,4 +52,8 @@ void Task::SetStatus(const bool status){
 
 void Task::CompleteTask(){
     status_ = true; //Will be the function used when you click complete task
+};
+
+void Task::ReopenTask(){
+    status_ = false;
 };

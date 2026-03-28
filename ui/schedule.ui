@@ -17,8 +17,8 @@
    <widget class="QPushButton" name="pushButton_1">
     <property name="geometry">
      <rect>
-      <x>20</x>
-      <y>20</y>
+      <x>980</x>
+      <y>650</y>
       <width>111</width>
       <height>32</height>
      </rect>
@@ -31,7 +31,7 @@
     <property name="geometry">
      <rect>
       <x>30</x>
-      <y>70</y>
+      <y>35</y>
       <width>341</width>
       <height>51</height>
      </rect>
@@ -43,14 +43,14 @@
      </font>
     </property>
     <property name="text">
-     <string>Schedule gestor</string>
+     <string>Schedule Manager</string>
     </property>
    </widget>
    <widget class="QLabel" name="descriptionLabel">
     <property name="geometry">
      <rect>
       <x>30</x>
-      <y>120</y>
+      <y>85</y>
       <width>421</width>
       <height>61</height>
      </rect>
@@ -66,7 +66,7 @@
     <property name="geometry">
      <rect>
       <x>30</x>
-      <y>210</y>
+      <y>175</y>
       <width>151</width>
       <height>32</height>
      </rect>
@@ -76,7 +76,7 @@
     <property name="geometry">
      <rect>
       <x>200</x>
-      <y>210</y>
+      <y>175</y>
       <width>131</width>
       <height>32</height>
      </rect>
@@ -89,7 +89,7 @@
     <property name="geometry">
      <rect>
       <x>350</x>
-      <y>210</y>
+      <y>175</y>
       <width>201</width>
       <height>32</height>
      </rect>
@@ -102,7 +102,7 @@
     <property name="geometry">
      <rect>
       <x>570</x>
-      <y>210</y>
+      <y>175</y>
       <width>171</width>
       <height>32</height>
      </rect>
@@ -115,7 +115,7 @@
     <property name="geometry">
      <rect>
       <x>760</x>
-      <y>210</y>
+      <y>175</y>
       <width>131</width>
       <height>32</height>
      </rect>
@@ -128,7 +128,7 @@
     <property name="geometry">
      <rect>
       <x>910</x>
-      <y>210</y>
+      <y>175</y>
       <width>151</width>
       <height>32</height>
      </rect>
@@ -141,9 +141,9 @@
     <property name="geometry">
      <rect>
       <x>30</x>
-      <y>270</y>
+      <y>235</y>
       <width>1031</width>
-      <height>351</height>
+      <height>360</height>
      </rect>
     </property>
     <column>
@@ -170,7 +170,7 @@
    <widget class="QPushButton" name="saveScheduleButton">
     <property name="geometry">
      <rect>
-      <x>590</x>
+      <x>460</x>
       <y>650</y>
       <width>111</width>
       <height>32</height>
@@ -183,7 +183,7 @@
    <widget class="QPushButton" name="exportScheduleButton">
     <property name="geometry">
      <rect>
-      <x>720</x>
+      <x>590</x>
       <y>650</y>
       <width>111</width>
       <height>32</height>
@@ -196,7 +196,7 @@
    <widget class="QPushButton" name="importScheduleButton">
     <property name="geometry">
      <rect>
-      <x>850</x>
+      <x>720</x>
       <y>650</y>
       <width>111</width>
       <height>32</height>
@@ -209,9 +209,9 @@
    <widget class="QPushButton" name="clearScheduleButton">
     <property name="geometry">
      <rect>
-      <x>980</x>
+      <x>850</x>
       <y>650</y>
-      <width>81</width>
+      <width>111</width>
       <height>32</height>
      </rect>
     </property>

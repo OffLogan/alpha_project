@@ -6,14 +6,24 @@
 
 #include <QMessageBox>
 #include <QListWidget>
+#include <QDialog>
+#include <QDialogButtonBox>
 #include <QDate>
 #include <QCoreApplication>
 #include <QDir>
 #include <QFileInfo>
 #include <QFont>
+#include <QFormLayout>
+#include <QHBoxLayout>
+#include <QLabel>
+#include <QLineEdit>
 #include <QPixmap>
+#include <QPushButton>
+#include <QSignalBlocker>
 #include <QString>
 #include <QStringList>
+#include <QTextEdit>
+#include <QVBoxLayout>
 #include <Qt>
 
 namespace {
@@ -26,16 +36,73 @@ QString normalizedField(const QString &value, const QString &defaultLabel)
 QDate parseDueDate(const QString& rawValue)
 {
     const QString trimmedValue = rawValue.trimmed();
-    const QStringList formats = {"dd/MM/yy", "dd/MM/yyyy"};
+    const QStringList parts = trimmedValue.split('/');
+    if (parts.size() != 3) {
+        return QDate();
+    }
 
-    for (const QString& format : formats) {
-        const QDate parsedDate = QDate::fromString(trimmedValue, format);
-        if (parsedDate.isValid()) {
-            return parsedDate;
+    bool dayOk = false;
+    bool monthOk = false;
+    bool yearOk = false;
+    const int day = parts[0].toInt(&dayOk);
+    const int month = parts[1].toInt(&monthOk);
+    int year = parts[2].toInt(&yearOk);
+
+    if (!dayOk || !monthOk || !yearOk) {
+        return QDate();
+    }
+
+    if (parts[2].size() != 2) {
+        return QDate();
+    }
+
+    year += 2000;
+
+    const QDate parsedDate(year, month, day);
+    return parsedDate.isValid() ? parsedDate : QDate();
+}
+
+QString formatDateInput(const QString& rawText)
+{
+    QString digitsOnly;
+    digitsOnly.reserve(rawText.size());
+
+    for (const QChar character : rawText) {
+        if (character.isDigit()) {
+            digitsOnly.append(character);
         }
     }
 
-    return QDate();
+    if (digitsOnly.size() > 6) {
+        digitsOnly.truncate(6);
+    }
+
+    QString formatted;
+    for (int i = 0; i < digitsOnly.size(); ++i) {
+        if (i == 2 || i == 4) {
+            formatted.append('/');
+        }
+        formatted.append(digitsOnly[i]);
+    }
+
+    return formatted;
+}
+
+void attachDateAutoFormatting(QLineEdit* lineEdit)
+{
+    if (lineEdit == nullptr) {
+        return;
+    }
+
+    QObject::connect(lineEdit, &QLineEdit::textChanged, lineEdit, [lineEdit](const QString& text) {
+        const QString formatted = formatDateInput(text);
+        if (formatted == text) {
+            return;
+        }
+
+        const QSignalBlocker blocker(lineEdit);
+        lineEdit->setText(formatted);
+    });
 }
 
 QString taskTextFromTask(const Task& task)
@@ -60,6 +127,222 @@ QString reminderTextFromReminder(const Reminder& reminder)
 
     parts << QString("Due: %1").arg(reminder.GetDue());
     return parts.join(" | ");
+}
+
+bool isReminderOverdue(const Reminder& reminder)
+{
+    const QDate dueDate = parseDueDate(QString::fromStdString(reminder.GetDue()));
+    return dueDate.isValid() && dueDate < QDate::currentDate();
+}
+
+bool isReminderDueSoon(const Reminder& reminder)
+{
+    const QDate dueDate = parseDueDate(QString::fromStdString(reminder.GetDue()));
+    if (!dueDate.isValid()) {
+        return false;
+    }
+
+    const int daysUntilDue = QDate::currentDate().daysTo(dueDate);
+    return daysUntilDue >= 0 && daysUntilDue <= 3;
+}
+
+void applyReminderVisualState(QListWidgetItem* item, const Reminder& reminder)
+{
+    if (item == nullptr) {
+        return;
+    }
+
+    QFont itemFont = item->font();
+    itemFont.setBold(false);
+    item->setFont(itemFont);
+    item->setForeground(QBrush());
+    item->setBackground(QBrush());
+    item->setToolTip(QString());
+
+    if (isReminderOverdue(reminder)) {
+        itemFont.setBold(true);
+        item->setFont(itemFont);
+        item->setForeground(QColor(185, 28, 28));
+        item->setToolTip("Overdue reminder");
+        return;
+    }
+
+    if (isReminderDueSoon(reminder)) {
+        itemFont.setBold(true);
+        item->setFont(itemFont);
+        item->setForeground(QColor(180, 83, 9));
+        item->setToolTip("Reminder due soon");
+    }
+}
+
+bool confirmDeleteAction(QWidget* parent, const QString& title, const QString& prompt)
+{
+    const QMessageBox::StandardButton result = QMessageBox::question(
+        parent,
+        title,
+        prompt,
+        QMessageBox::Yes | QMessageBox::No,
+        QMessageBox::No
+    );
+
+    return result == QMessageBox::Yes;
+}
+
+bool editTaskDialog(QWidget* parent, const Task& originalTask, QString* nameOut, QString* descriptionOut)
+{
+    if (nameOut == nullptr || descriptionOut == nullptr) {
+        return false;
+    }
+
+    QDialog dialog(parent);
+    dialog.setWindowTitle("Edit task");
+
+    QFormLayout formLayout(&dialog);
+    QLineEdit nameEdit(&dialog);
+    QTextEdit descriptionEdit(&dialog);
+    QDialogButtonBox buttonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
+
+    nameEdit.setText(QString::fromStdString(originalTask.GetName()));
+    descriptionEdit.setPlainText(QString::fromStdString(originalTask.GetDescription()));
+    descriptionEdit.setMinimumHeight(100);
+
+    formLayout.addRow("Name", &nameEdit);
+    formLayout.addRow("Description", &descriptionEdit);
+    formLayout.addWidget(&buttonBox);
+
+    QObject::connect(&buttonBox, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+    QObject::connect(&buttonBox, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+
+    if (dialog.exec() != QDialog::Accepted) {
+        return false;
+    }
+
+    *nameOut = nameEdit.text().trimmed();
+    *descriptionOut = descriptionEdit.toPlainText().trimmed();
+    return true;
+}
+
+bool editReminderDialog(QWidget* parent,
+                        const Reminder& originalReminder,
+                        QString* nameOut,
+                        QString* descriptionOut,
+                        QString* dueOut)
+{
+    if (nameOut == nullptr || descriptionOut == nullptr || dueOut == nullptr) {
+        return false;
+    }
+
+    QDialog dialog(parent);
+    dialog.setWindowTitle("Edit reminder");
+
+    QFormLayout formLayout(&dialog);
+    QLineEdit nameEdit(&dialog);
+    QTextEdit descriptionEdit(&dialog);
+    QLineEdit dueEdit(&dialog);
+    QDialogButtonBox buttonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
+
+    nameEdit.setText(QString::fromStdString(originalReminder.GetName()));
+    descriptionEdit.setPlainText(QString::fromStdString(originalReminder.GetDescription()));
+    descriptionEdit.setMinimumHeight(100);
+    dueEdit.setText(QString::fromStdString(originalReminder.GetDue()));
+    attachDateAutoFormatting(&dueEdit);
+
+    formLayout.addRow("Name", &nameEdit);
+    formLayout.addRow("Description", &descriptionEdit);
+    formLayout.addRow("Due date", &dueEdit);
+    formLayout.addWidget(&buttonBox);
+
+    QObject::connect(&buttonBox, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+    QObject::connect(&buttonBox, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+
+    if (dialog.exec() != QDialog::Accepted) {
+        return false;
+    }
+
+    *nameOut = nameEdit.text().trimmed();
+    *descriptionOut = descriptionEdit.toPlainText().trimmed();
+    *dueOut = dueEdit.text().trimmed();
+    return true;
+}
+
+enum class HomeItemAction {
+    Cancel,
+    Edit,
+    Complete,
+    Delete
+};
+
+enum class CompletedItemAction {
+    Cancel,
+    Reopen,
+    Delete
+};
+
+HomeItemAction askActiveItemAction(QWidget* parent, const QString& title, const QString& prompt)
+{
+    QDialog dialog(parent);
+    dialog.setWindowTitle(title);
+
+    QVBoxLayout* rootLayout = new QVBoxLayout(&dialog);
+    QLabel* promptLabel = new QLabel(prompt, &dialog);
+    QHBoxLayout* buttonsLayout = new QHBoxLayout();
+    QPushButton* completeButton = new QPushButton("Complete", &dialog);
+    QPushButton* editButton = new QPushButton("Edit", &dialog);
+    QPushButton* deleteButton = new QPushButton("Delete", &dialog);
+    QPushButton* cancelButton = new QPushButton("Cancel", &dialog);
+
+    promptLabel->setWordWrap(true);
+    buttonsLayout->addWidget(completeButton);
+    buttonsLayout->addWidget(editButton);
+    buttonsLayout->addWidget(deleteButton);
+    buttonsLayout->addStretch();
+    buttonsLayout->addWidget(cancelButton);
+
+    rootLayout->addWidget(promptLabel);
+    rootLayout->addLayout(buttonsLayout);
+
+    HomeItemAction selectedAction = HomeItemAction::Cancel;
+    QObject::connect(completeButton, &QPushButton::clicked, &dialog, [&]() {
+        selectedAction = HomeItemAction::Complete;
+        dialog.accept();
+    });
+    QObject::connect(editButton, &QPushButton::clicked, &dialog, [&]() {
+        selectedAction = HomeItemAction::Edit;
+        dialog.accept();
+    });
+    QObject::connect(deleteButton, &QPushButton::clicked, &dialog, [&]() {
+        selectedAction = HomeItemAction::Delete;
+        dialog.accept();
+    });
+    QObject::connect(cancelButton, &QPushButton::clicked, &dialog, [&]() {
+        selectedAction = HomeItemAction::Cancel;
+        dialog.reject();
+    });
+
+    dialog.exec();
+    return selectedAction;
+}
+
+CompletedItemAction askCompletedItemAction(QWidget* parent, const QString& title, const QString& prompt)
+{
+    QMessageBox messageBox(parent);
+    messageBox.setWindowTitle(title);
+    messageBox.setText(prompt);
+
+    QPushButton* reopenButton = messageBox.addButton("Reopen", QMessageBox::AcceptRole);
+    QPushButton* deleteButton = messageBox.addButton("Delete", QMessageBox::DestructiveRole);
+    messageBox.addButton(QMessageBox::Cancel);
+    messageBox.exec();
+
+    if (messageBox.clickedButton() == reopenButton) {
+        return CompletedItemAction::Reopen;
+    }
+
+    if (messageBox.clickedButton() == deleteButton) {
+        return CompletedItemAction::Delete;
+    }
+
+    return CompletedItemAction::Cancel;
 }
 
 QPixmap loadLogoPixmap()
@@ -159,9 +442,12 @@ homeScreen::homeScreen(QWidget *parent)
 
     ui->textEdit->document()->setDocumentMargin(6);
     ui->textEdit_2->document()->setDocumentMargin(6);
-    ui->textEdit->setStyleSheet("QTextEdit { color: white; padding-top: 2px; padding-bottom: 2px; }");
-    ui->textEdit_2->setStyleSheet("QTextEdit { color: white; padding-top: 2px; padding-bottom: 2px; }");
+    ui->textEdit->setStyleSheet(
+        "QTextEdit { color: palette(text); background-color: palette(base); padding-top: 2px; padding-bottom: 2px; }");
+    ui->textEdit_2->setStyleSheet(
+        "QTextEdit { color: palette(text); background-color: palette(base); padding-top: 2px; padding-bottom: 2px; }");
     ui->label->setAttribute(Qt::WA_TransparentForMouseEvents, true);
+    ui->label->setStyleSheet("background: transparent;");
     ui->label_8->setAttribute(Qt::WA_TransparentForMouseEvents, true);
 
     taskData_.Load();
@@ -173,17 +459,21 @@ homeScreen::homeScreen(QWidget *parent)
     connect(ui->pushButton_2, &QPushButton::clicked, this, &homeScreen::openSettings);
     connect(ui->pushButton_4, &QPushButton::clicked, this, &homeScreen::openNotes);
     connect(ui->pushButton_5, &QPushButton::clicked, this, &homeScreen::openSchedule);
-    connect(ui->listWidget, &QListWidget::itemDoubleClicked, this, &homeScreen::removeTaskItem);
-    connect(ui->listWidget_2, &QListWidget::itemDoubleClicked, this, &homeScreen::removeReminderItem);
+    connect(ui->pushButton_6, &QPushButton::clicked, this, &homeScreen::openCompletedItems);
+    connect(ui->listWidget, &QListWidget::itemDoubleClicked, this, &homeScreen::handleTaskItemAction);
+    connect(ui->listWidget_2, &QListWidget::itemDoubleClicked, this, &homeScreen::handleReminderItemAction);
     ui->lineEdit->setPlaceholderText("Name");
     ui->textEdit->setPlaceholderText("Description");
     ui->lineEdit_3->setPlaceholderText("Name");
     ui->textEdit_2->setPlaceholderText("Description");
-    ui->lineEdit_5->setPlaceholderText("Day/Month/Year");
-    ui->lineEdit->setStyleSheet("QLineEdit { color: white; padding-top: 2px; padding-bottom: 2px; }");
-    ui->lineEdit_3->setStyleSheet("QLineEdit { color: white; padding-top: 2px; padding-bottom: 2px; }");
-    ui->lineEdit_5->setStyleSheet("QLineEdit { color: white; padding-top: 2px; padding-bottom: 2px; }");
-
+    ui->lineEdit_5->setPlaceholderText("DD/MM/YY");
+    attachDateAutoFormatting(ui->lineEdit_5);
+    ui->lineEdit->setStyleSheet(
+        "QLineEdit { color: palette(text); background-color: palette(base); padding-top: 2px; padding-bottom: 2px; }");
+    ui->lineEdit_3->setStyleSheet(
+        "QLineEdit { color: palette(text); background-color: palette(base); padding-top: 2px; padding-bottom: 2px; }");
+    ui->lineEdit_5->setStyleSheet(
+        "QLineEdit { color: palette(text); background-color: palette(base); padding-top: 2px; padding-bottom: 2px; }");
     const QPixmap logoPixmap = buildHomeLogoPixmap(ui->label->size());
     if (!logoPixmap.isNull()) {
         ui->label->setPixmap(logoPixmap);
@@ -197,6 +487,29 @@ homeScreen::homeScreen(QWidget *parent)
 homeScreen::~homeScreen()
 {
     delete ui;
+}
+
+void homeScreen::mousePressEvent(QMouseEvent *event)
+{
+    if (event != nullptr) {
+        const QPoint listWidgetPosition = ui->listWidget->mapFrom(this, event->pos());
+        const QPoint reminderListPosition = ui->listWidget_2->mapFrom(this, event->pos());
+
+        const bool clickedTaskList = ui->listWidget->rect().contains(listWidgetPosition);
+        const bool clickedReminderList = ui->listWidget_2->rect().contains(reminderListPosition);
+
+        if (!clickedTaskList) {
+            ui->listWidget->clearSelection();
+            ui->listWidget->setCurrentItem(nullptr);
+        }
+
+        if (!clickedReminderList) {
+            ui->listWidget_2->clearSelection();
+            ui->listWidget_2->setCurrentItem(nullptr);
+        }
+    }
+
+    QDialog::mousePressEvent(event);
 }
 
 void homeScreen::showEvent(QShowEvent *event)
@@ -234,11 +547,15 @@ void homeScreen::loadStoredData()
     ui->listWidget_2->clear();
 
     for (const Task& task : taskData_.Data()) {
-        appendTaskItem(task);
+        if (!task.GetStatus()) {
+            appendTaskItem(task);
+        }
     }
 
     for (const Reminder& reminder : reminderData_.Data()) {
-        appendReminderItem(reminder);
+        if (!reminder.GetStatus()) {
+            appendReminderItem(reminder);
+        }
     }
 }
 
@@ -252,6 +569,28 @@ void homeScreen::appendReminderItem(const Reminder& reminder)
 {
     QListWidgetItem* item = new QListWidgetItem(reminderTextFromReminder(reminder), ui->listWidget_2);
     item->setData(Qt::UserRole, reminder.GetTaskId());
+    applyReminderVisualState(item, reminder);
+}
+
+void homeScreen::refreshTaskItem(QListWidgetItem* item, const Task& task)
+{
+    if (item == nullptr) {
+        return;
+    }
+
+    item->setText(taskTextFromTask(task));
+    item->setData(Qt::UserRole, task.GetTaskId());
+}
+
+void homeScreen::refreshReminderItem(QListWidgetItem* item, const Reminder& reminder)
+{
+    if (item == nullptr) {
+        return;
+    }
+
+    item->setText(reminderTextFromReminder(reminder));
+    item->setData(Qt::UserRole, reminder.GetTaskId());
+    applyReminderVisualState(item, reminder);
 }
 
 QString homeScreen::buildTaskText() const
@@ -339,7 +678,7 @@ void homeScreen::addReminder()
 
     const QDate dueDate = parseDueDate(dueText);
     if (!dueDate.isValid()) {
-        QMessageBox::warning(this, "Reminder", "The due date must use the format dd/MM/yy or dd/MM/yyyy.");
+        QMessageBox::warning(this, "Reminder", "The due date must use the format DD/MM/YY.");
         return;
     }
 
@@ -358,26 +697,154 @@ void homeScreen::addReminder()
     clearReminderInputs();
 }
 
-void homeScreen::removeTaskItem(QListWidgetItem *item)
+void homeScreen::handleTaskItemAction(QListWidgetItem *item)
 {
-    const int id = item->data(Qt::UserRole).toInt();
-    if (!taskData_.RemoveTask(id)) {
-        QMessageBox::warning(this, "Task", "Could not delete the task from tasks.json.");
+    if (item == nullptr) {
         return;
     }
 
-    delete ui->listWidget->takeItem(ui->listWidget->row(item));
+    const int id = item->data(Qt::UserRole).toInt();
+    Task* task = taskData_.FindById(id);
+    if (task == nullptr) {
+        QMessageBox::warning(this, "Task", "The selected task could not be found.");
+        return;
+    }
+
+    const HomeItemAction action = askActiveItemAction(this, "Task", "Choose what you want to do with this task.");
+    if (action == HomeItemAction::Complete) {
+        Task updatedTask = *task;
+        updatedTask.CompleteTask();
+
+        if (!taskData_.UpdateTask(updatedTask)) {
+            QMessageBox::warning(this, "Task", "Could not update the task in tasks.json.");
+            return;
+        }
+
+        delete ui->listWidget->takeItem(ui->listWidget->row(item));
+        return;
+    }
+
+    if (action == HomeItemAction::Delete) {
+        if (!confirmDeleteAction(this, "Delete task", "Do you really want to delete this task?")) {
+            return;
+        }
+
+        if (!taskData_.RemoveTask(id)) {
+            QMessageBox::warning(this, "Task", "Could not delete the task from tasks.json.");
+            return;
+        }
+
+        delete ui->listWidget->takeItem(ui->listWidget->row(item));
+        return;
+    }
+
+    if (action != HomeItemAction::Edit) {
+        return;
+    }
+
+    QString updatedName;
+    QString updatedDescription;
+    if (!editTaskDialog(this, *task, &updatedName, &updatedDescription)) {
+        return;
+    }
+
+    if (updatedName.isEmpty()) {
+        QMessageBox::warning(this, "Task", "The task name cannot be empty.");
+        return;
+    }
+
+    Task updatedTask = *task;
+    if (!updatedTask.SetName(updatedName.toStdString()) ||
+        !updatedTask.SetDescription(updatedDescription.toStdString())) {
+        QMessageBox::warning(this, "Task", "The task data is not valid.");
+        return;
+    }
+
+    if (!taskData_.UpdateTask(updatedTask)) {
+        QMessageBox::warning(this, "Task", "Could not update the task in tasks.json.");
+        return;
+    }
+
+    refreshTaskItem(item, updatedTask);
 }
 
-void homeScreen::removeReminderItem(QListWidgetItem *item)
+void homeScreen::handleReminderItemAction(QListWidgetItem *item)
 {
-    const int id = item->data(Qt::UserRole).toInt();
-    if (!reminderData_.RemoveReminder(id)) {
-        QMessageBox::warning(this, "Reminder", "Could not delete the reminder from reminders.json.");
+    if (item == nullptr) {
         return;
     }
 
-    delete ui->listWidget_2->takeItem(ui->listWidget_2->row(item));
+    const int id = item->data(Qt::UserRole).toInt();
+    Reminder* reminder = reminderData_.FindById(id);
+    if (reminder == nullptr) {
+        QMessageBox::warning(this, "Reminder", "The selected reminder could not be found.");
+        return;
+    }
+
+    const HomeItemAction action = askActiveItemAction(this, "Reminder", "Choose what you want to do with this reminder.");
+    if (action == HomeItemAction::Complete) {
+        Reminder updatedReminder = *reminder;
+        updatedReminder.CompleteTask();
+
+        if (!reminderData_.UpdateReminder(updatedReminder)) {
+            QMessageBox::warning(this, "Reminder", "Could not update the reminder in reminders.json.");
+            return;
+        }
+
+        delete ui->listWidget_2->takeItem(ui->listWidget_2->row(item));
+        return;
+    }
+
+    if (action == HomeItemAction::Delete) {
+        if (!confirmDeleteAction(this, "Delete reminder", "Do you really want to delete this reminder?")) {
+            return;
+        }
+
+        if (!reminderData_.RemoveReminder(id)) {
+            QMessageBox::warning(this, "Reminder", "Could not delete the reminder from reminders.json.");
+            return;
+        }
+
+        delete ui->listWidget_2->takeItem(ui->listWidget_2->row(item));
+        return;
+    }
+
+    if (action != HomeItemAction::Edit) {
+        return;
+    }
+
+    QString updatedName;
+    QString updatedDescription;
+    QString updatedDue;
+    if (!editReminderDialog(this, *reminder, &updatedName, &updatedDescription, &updatedDue)) {
+        return;
+    }
+
+    if (updatedName.isEmpty() || updatedDue.isEmpty()) {
+        QMessageBox::warning(this, "Reminder", "The reminder needs a name and a due date.");
+        return;
+    }
+
+    const QDate dueDate = parseDueDate(updatedDue);
+    if (!dueDate.isValid()) {
+        QMessageBox::warning(this, "Reminder", "The due date must use the format DD/MM/YY.");
+        return;
+    }
+
+    Reminder updatedReminder = *reminder;
+    if (!updatedReminder.SetName(updatedName.toStdString()) ||
+        !updatedReminder.SetDescription(updatedDescription.toStdString()) ||
+        !updatedReminder.SetDue(dueDate.toString("dd/MM/yy").toStdString())) {
+        QMessageBox::warning(this, "Reminder", "The reminder data is not valid.");
+        return;
+    }
+
+    if (!reminderData_.UpdateReminder(updatedReminder)) {
+        QMessageBox::warning(this, "Reminder", "Could not update the reminder in reminders.json.");
+        return;
+    }
+
+    refreshReminderItem(item, updatedReminder);
 }
 
 void homeScreen::openSettings()
@@ -405,4 +872,151 @@ void homeScreen::openSchedule()
     scheduleWindow_->load();
     hide();
     presentWindow(scheduleWindow_);
+}
+
+void homeScreen::openCompletedItems()
+{
+    QDialog dialog(this);
+    dialog.setWindowTitle("Completed items");
+    dialog.resize(760, 420);
+
+    QVBoxLayout* rootLayout = new QVBoxLayout(&dialog);
+    QLabel* titleLabel = new QLabel("Completed tasks and reminders", &dialog);
+    QHBoxLayout* listsLayout = new QHBoxLayout();
+    QListWidget* completedTasksList = new QListWidget(&dialog);
+    QListWidget* completedRemindersList = new QListWidget(&dialog);
+    QDialogButtonBox* buttonBox = new QDialogButtonBox(QDialogButtonBox::Close, &dialog);
+
+    titleLabel->setStyleSheet("font-size: 20px; font-weight: 700;");
+    completedTasksList->setMinimumWidth(320);
+    completedRemindersList->setMinimumWidth(320);
+
+    listsLayout->addWidget(completedTasksList);
+    listsLayout->addWidget(completedRemindersList);
+    rootLayout->addWidget(titleLabel);
+    rootLayout->addLayout(listsLayout);
+    rootLayout->addWidget(buttonBox);
+
+    auto reloadLists = [&]() {
+        taskData_.Load();
+        reminderData_.Load();
+        completedTasksList->clear();
+        completedRemindersList->clear();
+
+        for (const Task& task : taskData_.Data()) {
+            if (!task.GetStatus()) {
+                continue;
+            }
+
+            QListWidgetItem* item = new QListWidgetItem(taskTextFromTask(task), completedTasksList);
+            item->setData(Qt::UserRole, task.GetTaskId());
+        }
+
+        for (const Reminder& reminder : reminderData_.Data()) {
+            if (!reminder.GetStatus()) {
+                continue;
+            }
+
+            QListWidgetItem* item = new QListWidgetItem(reminderTextFromReminder(reminder), completedRemindersList);
+            item->setData(Qt::UserRole, reminder.GetTaskId());
+        }
+    };
+
+    reloadLists();
+
+    connect(buttonBox, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+
+    connect(completedTasksList, &QListWidget::itemDoubleClicked, &dialog, [&](QListWidgetItem* item) {
+        if (item == nullptr) {
+            return;
+        }
+
+        const int id = item->data(Qt::UserRole).toInt();
+        Task* task = taskData_.FindById(id);
+        if (task == nullptr) {
+            QMessageBox::warning(&dialog, "Completed task", "The selected task could not be found.");
+            return;
+        }
+
+        const CompletedItemAction action = askCompletedItemAction(
+            &dialog,
+            "Completed task",
+            "Do you want to reopen or delete this completed task?");
+
+        if (action == CompletedItemAction::Reopen) {
+            Task updatedTask = *task;
+            updatedTask.ReopenTask();
+
+            if (!taskData_.UpdateTask(updatedTask)) {
+                QMessageBox::warning(&dialog, "Completed task", "Could not reopen the task.");
+                return;
+            }
+
+            reloadLists();
+            loadStoredData();
+            return;
+        }
+
+        if (action == CompletedItemAction::Delete) {
+            if (!confirmDeleteAction(&dialog, "Delete completed task", "Do you really want to delete this completed task?")) {
+                return;
+            }
+
+            if (!taskData_.RemoveTask(id)) {
+                QMessageBox::warning(&dialog, "Completed task", "Could not delete the task.");
+                return;
+            }
+
+            reloadLists();
+            loadStoredData();
+        }
+    });
+
+    connect(completedRemindersList, &QListWidget::itemDoubleClicked, &dialog, [&](QListWidgetItem* item) {
+        if (item == nullptr) {
+            return;
+        }
+
+        const int id = item->data(Qt::UserRole).toInt();
+        Reminder* reminder = reminderData_.FindById(id);
+        if (reminder == nullptr) {
+            QMessageBox::warning(&dialog, "Completed reminder", "The selected reminder could not be found.");
+            return;
+        }
+
+        const CompletedItemAction action = askCompletedItemAction(
+            &dialog,
+            "Completed reminder",
+            "Do you want to reopen or delete this completed reminder?");
+
+        if (action == CompletedItemAction::Reopen) {
+            Reminder updatedReminder = *reminder;
+            updatedReminder.ReopenTask();
+
+            if (!reminderData_.UpdateReminder(updatedReminder)) {
+                QMessageBox::warning(&dialog, "Completed reminder", "Could not reopen the reminder.");
+                return;
+            }
+
+            reloadLists();
+            loadStoredData();
+            return;
+        }
+
+        if (action == CompletedItemAction::Delete) {
+            if (!confirmDeleteAction(&dialog, "Delete completed reminder", "Do you really want to delete this completed reminder?")) {
+                return;
+            }
+
+            if (!reminderData_.RemoveReminder(id)) {
+                QMessageBox::warning(&dialog, "Completed reminder", "Could not delete the reminder.");
+                return;
+            }
+
+            reloadLists();
+            loadStoredData();
+        }
+    });
+
+    dialog.exec();
 }
