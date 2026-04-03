@@ -1,7 +1,7 @@
 # KMN Space
 KMN Space is a desktop academic workspace for notes, tasks, reminders and schedules.
 
-Current version: `0.0.3`
+Current version: `0.0.4`
 
 ## Tech stack
 The application is built in C++ with Qt.
@@ -17,7 +17,7 @@ Qt is used for:
 - `Schedule`: class or study block management
 - `Settings`: dark mode, notifications and local app info
 
-## Implemented in 0.0.3
+## Implemented in 0.0.4
 - task and reminder management on the home screen
 - editing for tasks and reminders
 - complete and reopen flows
