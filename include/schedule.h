@@ -2,6 +2,7 @@
 #define SCHEDULE_H
 
 #include <QMainWindow>
+#include <QResizeEvent>
 
 class QTableWidgetItem;
 
@@ -17,9 +18,14 @@ public:
     explicit schedule(QWidget *parent = nullptr);
     ~schedule();
     void load();
+    void focusEntry(const QString& day,
+                    const QString& time,
+                    const QString& subject,
+                    const QString& location);
 
 protected:
     bool eventFilter(QObject* watched, QEvent* event) override;
+    void resizeEvent(QResizeEvent *event) override;
 
 private slots:
     void goBackHome();
@@ -40,6 +46,7 @@ private:
                    const QString& subject,
                    const QString& location);
     void clearInputs();
+    void updateResponsiveLayout();
     QString scheduleFilePath() const;
     QString defaultExportSchedulePath() const;
 

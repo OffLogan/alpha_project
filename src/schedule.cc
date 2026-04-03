@@ -2,6 +2,7 @@
 #include "../include/appPaths.h"
 #include "ui_schedule.h"
 
+#include <algorithm>
 #include <QDir>
 #include <QEvent>
 #include <QFileDialog>
@@ -97,6 +98,7 @@ schedule::schedule(QWidget *parent)
         writeSchedule(false);
     });
 
+    updateResponsiveLayout();
     loadSchedule();
 }
 
@@ -108,6 +110,47 @@ schedule::~schedule()
 void schedule::load()
 {
     loadSchedule();
+}
+
+void schedule::resizeEvent(QResizeEvent *event)
+{
+    QMainWindow::resizeEvent(event);
+    updateResponsiveLayout();
+}
+
+void schedule::focusEntry(const QString& day,
+                          const QString& time,
+                          const QString& subject,
+                          const QString& location)
+{
+    loadSchedule();
+
+    for (int row = 0; row < ui->scheduleTableWidget->rowCount(); ++row) {
+        const QString rowDay = ui->scheduleTableWidget->item(row, 0) != nullptr
+            ? ui->scheduleTableWidget->item(row, 0)->text().trimmed()
+            : QString();
+        const QString rowTime = ui->scheduleTableWidget->item(row, 1) != nullptr
+            ? ui->scheduleTableWidget->item(row, 1)->text().trimmed()
+            : QString();
+        const QString rowSubject = ui->scheduleTableWidget->item(row, 2) != nullptr
+            ? ui->scheduleTableWidget->item(row, 2)->text().trimmed()
+            : QString();
+        const QString rowLocation = ui->scheduleTableWidget->item(row, 3) != nullptr
+            ? ui->scheduleTableWidget->item(row, 3)->text().trimmed()
+            : QString();
+
+        if (rowDay.compare(day.trimmed(), Qt::CaseInsensitive) != 0 ||
+            rowTime.compare(time.trimmed(), Qt::CaseInsensitive) != 0 ||
+            rowSubject.compare(subject.trimmed(), Qt::CaseInsensitive) != 0 ||
+            rowLocation.compare(location.trimmed(), Qt::CaseInsensitive) != 0) {
+            continue;
+        }
+
+        ui->scheduleTableWidget->setCurrentCell(row, 0);
+        ui->scheduleTableWidget->selectRow(row);
+        ui->scheduleTableWidget->scrollToItem(ui->scheduleTableWidget->item(row, 0));
+        return;
+    }
 }
 
 bool schedule::eventFilter(QObject* watched, QEvent* event)
@@ -391,6 +434,70 @@ void schedule::clearInputs()
     ui->subjectLineEdit->clear();
     ui->locationLineEdit->clear();
     ui->timeLineEdit->setFocus();
+}
+
+void schedule::updateResponsiveLayout()
+{
+    if (ui == nullptr || ui->centralwidget == nullptr) {
+        return;
+    }
+
+    const int width = ui->centralwidget->width();
+    const int height = ui->centralwidget->height();
+    const int margin = 30;
+    const int top = 35;
+    const int buttonHeight = 32;
+    const int topRowY = 175;
+    const int bottomRowY = height - 40 - buttonHeight;
+    const int bottomGap = 18;
+    const int homeWidth = 111;
+
+    ui->titleLabel->setGeometry(margin, top, std::min(420, width - (margin * 2)), 51);
+    ui->descriptionLabel->setGeometry(margin, 85, std::min(520, width - (margin * 2)), 61);
+
+    const int rightLimit = width - margin;
+    const int topGap = 18;
+    const int topAvailable = std::max(820, rightLimit - margin);
+    int dayWidth = 150;
+    int timeWidth = 140;
+    int subjectWidth = std::max(180, static_cast<int>(topAvailable * 0.2));
+    int locationWidth = std::max(160, static_cast<int>(topAvailable * 0.18));
+    int addWidth = 130;
+    int deleteWidth = 150;
+
+    const int totalRequested = dayWidth + timeWidth + subjectWidth + locationWidth + addWidth + deleteWidth + (topGap * 5);
+    const int overflow = totalRequested - (rightLimit - margin);
+    if (overflow > 0) {
+        subjectWidth = std::max(160, subjectWidth - overflow / 2);
+        locationWidth = std::max(140, locationWidth - overflow / 2);
+    }
+
+    int x = margin;
+    ui->dayComboBox->setGeometry(x, topRowY, dayWidth, buttonHeight); x += dayWidth + topGap;
+    ui->timeLineEdit->setGeometry(x, topRowY, timeWidth, buttonHeight); x += timeWidth + topGap;
+    ui->subjectLineEdit->setGeometry(x, topRowY, subjectWidth, buttonHeight); x += subjectWidth + topGap;
+    ui->locationLineEdit->setGeometry(x, topRowY, locationWidth, buttonHeight); x += locationWidth + topGap;
+    ui->addEntryButton->setGeometry(x, topRowY, addWidth, buttonHeight); x += addWidth + topGap;
+    ui->deleteEntryButton->setGeometry(x, topRowY, deleteWidth, buttonHeight);
+
+    ui->scheduleTableWidget->setGeometry(margin,
+                                         235,
+                                         std::max(500, width - (margin * 2)),
+                                         std::max(280, bottomRowY - 235 - 24));
+
+    const int bottomButtonWidth = 111;
+    const int totalBottomWidth = (bottomButtonWidth * 5) + (bottomGap * 4);
+    int bottomStartX = std::max(margin, width - margin - totalBottomWidth);
+
+    ui->saveScheduleButton->setGeometry(bottomStartX, bottomRowY, bottomButtonWidth, buttonHeight);
+    bottomStartX += bottomButtonWidth + bottomGap;
+    ui->exportScheduleButton->setGeometry(bottomStartX, bottomRowY, bottomButtonWidth, buttonHeight);
+    bottomStartX += bottomButtonWidth + bottomGap;
+    ui->importScheduleButton->setGeometry(bottomStartX, bottomRowY, bottomButtonWidth, buttonHeight);
+    bottomStartX += bottomButtonWidth + bottomGap;
+    ui->clearScheduleButton->setGeometry(bottomStartX, bottomRowY, bottomButtonWidth, buttonHeight);
+    bottomStartX += bottomButtonWidth + bottomGap;
+    ui->pushButton_1->setGeometry(bottomStartX, bottomRowY, homeWidth, buttonHeight);
 }
 
 QString schedule::scheduleFilePath() const

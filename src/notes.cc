@@ -11,8 +11,11 @@
 #include <QMessageBox>
 #include <QPushButton>
 #include <QTreeWidget>
+#include <QTreeWidgetItemIterator>
 #include <QVariant>
+#include <algorithm>
 #include <unordered_map>
+#include <unordered_set>
 
 namespace {
 QString downloadsFilePath(const QString& baseName, const QString& extension)
@@ -46,6 +49,30 @@ void presentWindow(QWidget* window)
     window->activateWindow();
     window->setFocus(Qt::OtherFocusReason);
 }
+
+bool noteIsDescendantOf(const NoteData& noteData, int noteId, int potentialAncestorId)
+{
+    if (noteId <= 0 || potentialAncestorId <= 0) {
+        return false;
+    }
+
+    const Note* current = noteData.FindById(noteId);
+    std::unordered_set<int> visitedIds;
+
+    while (current != nullptr && current->GetParentId() > 0) {
+        if (!visitedIds.insert(current->GetId()).second) {
+            return false;
+        }
+
+        if (current->GetParentId() == potentialAncestorId) {
+            return true;
+        }
+
+        current = noteData.FindById(current->GetParentId());
+    }
+
+    return false;
+}
 }
 
 notes::notes(QWidget *parent)
@@ -59,6 +86,8 @@ notes::notes(QWidget *parent)
     connect(ui->pushButton, &QPushButton::clicked, this, &notes::goBackHome);
     connect(ui->newNoteButton, &QPushButton::clicked, this, &notes::createNote);
     connect(ui->newFolderButton, &QPushButton::clicked, this, &notes::createFolder);
+    connect(ui->renameFolderButton, &QPushButton::clicked, this, &notes::renameSelectedFolder);
+    connect(ui->moveNoteButton, &QPushButton::clicked, this, &notes::moveSelectedNote);
     connect(ui->deleteNoteButton, &QPushButton::clicked, this, &notes::deleteSelectedNote);
     connect(ui->downloadTxtButton, &QPushButton::clicked, this, &notes::downloadSelectedNoteAsText);
     connect(ui->downloadPdfButton, &QPushButton::clicked, this, &notes::downloadSelectedNoteAsPdf);
@@ -67,6 +96,7 @@ notes::notes(QWidget *parent)
     ui->treeWidget->setHeaderLabel("Notes");
 
     noteData_.Load();
+    updateResponsiveLayout();
     loadNotes();
 }
 
@@ -82,6 +112,12 @@ void notes::goBackHome()
     if (parentWidget() != nullptr) {
         presentWindow(parentWidget());
     }
+}
+
+void notes::resizeEvent(QResizeEvent *event)
+{
+    QMainWindow::resizeEvent(event);
+    updateResponsiveLayout();
 }
 
 void notes::createNote()
@@ -171,6 +207,140 @@ void notes::createFolder()
     refreshTree();
 }
 
+void notes::renameSelectedFolder()
+{
+    QTreeWidgetItem *selectedItem = ui->treeWidget->currentItem();
+    if (selectedItem == nullptr) {
+        QMessageBox::warning(this, "Notes", "Select a folder first.");
+        return;
+    }
+
+    if (!selectedItem->data(0, Qt::UserRole + 1).toBool()) {
+        QMessageBox::warning(this, "Notes", "Only folders can be renamed with this action.");
+        return;
+    }
+
+    const int folderId = selectedItem->data(0, Qt::UserRole).toInt();
+    Note* folder = noteData_.FindById(folderId);
+    if (folder == nullptr || !folder->IsFolder()) {
+        QMessageBox::warning(this, "Notes", "The selected folder could not be found.");
+        return;
+    }
+
+    bool accepted = false;
+    const QString updatedName = QInputDialog::getText(
+        this,
+        "Rename folder",
+        "New folder name:",
+        QLineEdit::Normal,
+        QString::fromStdString(folder->GetTitle()),
+        &accepted
+    ).trimmed();
+
+    if (!accepted) {
+        return;
+    }
+
+    if (updatedName.isEmpty()) {
+        QMessageBox::warning(this, "Notes", "The folder name cannot be empty.");
+        return;
+    }
+
+    Note updatedFolder = *folder;
+    if (!updatedFolder.SetTitle(updatedName.toStdString())) {
+        QMessageBox::warning(this, "Notes", "The folder name is not valid.");
+        return;
+    }
+
+    if (!noteData_.UpdateNote(updatedFolder)) {
+        QMessageBox::warning(this, "Notes", "Could not rename the selected folder.");
+        return;
+    }
+
+    refreshTree();
+}
+
+void notes::moveSelectedNote()
+{
+    QTreeWidgetItem *selectedItem = ui->treeWidget->currentItem();
+    if (selectedItem == nullptr) {
+        QMessageBox::warning(this, "Notes", "Select a note or folder first.");
+        return;
+    }
+
+    const int itemId = selectedItem->data(0, Qt::UserRole).toInt();
+    Note* item = noteData_.FindById(itemId);
+    if (item == nullptr) {
+        QMessageBox::warning(this, "Notes", "The selected item could not be found.");
+        return;
+    }
+
+    QStringList folderOptions;
+    folderOptions << "Root";
+    std::unordered_map<QString, int> folderIdByOption;
+    folderIdByOption[QString("Root")] = 0;
+
+    std::vector<Note> folders = noteData_.Data();
+    std::sort(folders.begin(), folders.end(), [](const Note& left, const Note& right) {
+        return QString::fromStdString(left.GetTitle()).localeAwareCompare(QString::fromStdString(right.GetTitle())) < 0;
+    });
+
+    for (const Note& candidate : folders) {
+        if (!candidate.IsFolder()) {
+            continue;
+        }
+
+        if (candidate.GetId() == item->GetId()) {
+            continue;
+        }
+
+        if (noteIsDescendantOf(noteData_, candidate.GetId(), item->GetId())) {
+            continue;
+        }
+
+        const QString folderTitle = QString::fromStdString(candidate.GetTitle()).trimmed().isEmpty()
+            ? QString("Untitled folder %1").arg(candidate.GetId())
+            : QString::fromStdString(candidate.GetTitle()).trimmed();
+        const QString optionLabel = QString("%1 (id %2)").arg(folderTitle).arg(candidate.GetId());
+
+        folderOptions << optionLabel;
+        folderIdByOption[optionLabel] = candidate.GetId();
+    }
+
+    bool accepted = false;
+    const QString selectedDestination = QInputDialog::getItem(
+        this,
+        item->IsFolder() ? "Move folder" : "Move note",
+        "Destination folder:",
+        folderOptions,
+        0,
+        false,
+        &accepted
+    );
+
+    if (!accepted || selectedDestination.isEmpty()) {
+        return;
+    }
+
+    const int destinationParentId = folderIdByOption[selectedDestination];
+    if (destinationParentId == item->GetParentId()) {
+        return;
+    }
+
+    Note updatedItem = *item;
+    if (!updatedItem.SetParentId(destinationParentId)) {
+        QMessageBox::warning(this, "Notes", "The destination folder is not valid.");
+        return;
+    }
+
+    if (!noteData_.UpdateNote(updatedItem)) {
+        QMessageBox::warning(this, "Notes", "Could not move the selected item.");
+        return;
+    }
+
+    refreshTree();
+}
+
 void notes::deleteSelectedNote()
 {
     QTreeWidgetItem *selectedItem = ui->treeWidget->currentItem();
@@ -236,6 +406,26 @@ void notes::refreshTree()
 {
     noteData_.Load();
     loadNotes();
+}
+
+void notes::openSearchResult(int noteId)
+{
+    refreshTree();
+
+    QTreeWidgetItemIterator iterator(ui->treeWidget);
+    while (*iterator != nullptr) {
+        QTreeWidgetItem* item = *iterator;
+        if (item->data(0, Qt::UserRole).toInt() == noteId) {
+            ui->treeWidget->setCurrentItem(item);
+            ui->treeWidget->scrollToItem(item);
+
+            if (!item->data(0, Qt::UserRole + 1).toBool()) {
+                openNote(item, 0);
+            }
+            return;
+        }
+        ++iterator;
+    }
 }
 
 void notes::downloadSelectedNoteAsText()
@@ -318,6 +508,61 @@ void notes::loadNotes()
     }
 
     ui->treeWidget->expandAll();
+}
+
+void notes::updateResponsiveLayout()
+{
+    if (ui == nullptr || ui->centralwidget == nullptr) {
+        return;
+    }
+
+    const int width = ui->centralwidget->width();
+    const int height = ui->centralwidget->height();
+    const int margin = 30;
+    const int top = 35;
+    const int buttonY = 175;
+    const int buttonHeight = 32;
+    const int buttonGap = 14;
+    const int homeWidth = 113;
+    const int actionButtonCount = 7;
+    const int availableButtonWidth = std::max(720, width - (margin * 2) - homeWidth - 32);
+    const int actionButtonWidth = std::max(90, std::min(125, (availableButtonWidth - (buttonGap * (actionButtonCount - 1))) / actionButtonCount));
+
+    ui->label->setGeometry(margin, top, std::min(420, width - (margin * 2)), 51);
+    ui->label_2->setGeometry(margin, 85, std::min(520, width - (margin * 2)), 61);
+
+    int actionX = margin;
+    auto placeButton = [&](QPushButton* button) {
+        if (button == nullptr) {
+            return;
+        }
+
+        button->setGeometry(actionX, buttonY, actionButtonWidth, buttonHeight);
+        actionX += actionButtonWidth + buttonGap;
+    };
+
+    placeButton(ui->newNoteButton);
+    placeButton(ui->newFolderButton);
+    placeButton(ui->renameFolderButton);
+    placeButton(ui->moveNoteButton);
+    placeButton(ui->deleteNoteButton);
+    placeButton(ui->downloadTxtButton);
+
+    if (ui->downloadPdfButton != nullptr) {
+        ui->downloadPdfButton->setGeometry(actionX, buttonY, actionButtonWidth, buttonHeight);
+    }
+
+    const int treeTop = 235;
+    const int bottomReserved = 88;
+    ui->treeWidget->setGeometry(margin,
+                                treeTop,
+                                std::max(420, width - (margin * 2)),
+                                std::max(260, height - treeTop - bottomReserved));
+
+    ui->pushButton->setGeometry(width - margin - homeWidth,
+                                height - 40 - buttonHeight,
+                                homeWidth,
+                                buttonHeight);
 }
 
 const Note* notes::selectedNote()

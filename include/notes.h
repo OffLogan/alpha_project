@@ -2,6 +2,7 @@
 #define NOTES_H
 
 #include <QMainWindow>
+#include <QResizeEvent>
 
 #include "noteGestor.h"
 
@@ -19,11 +20,17 @@ class notes : public QMainWindow
 public:
     explicit notes(QWidget *parent = nullptr);
     ~notes();
+    void openSearchResult(int noteId);
+
+protected:
+    void resizeEvent(QResizeEvent *event) override;
 
 private slots:
     void goBackHome();
     void createNote();
     void createFolder();
+    void renameSelectedFolder();
+    void moveSelectedNote();
     void deleteSelectedNote();
     void downloadSelectedNoteAsText();
     void downloadSelectedNoteAsPdf();
@@ -32,6 +39,7 @@ private slots:
 
 private:
     void loadNotes();
+    void updateResponsiveLayout();
     const Note* selectedNote();
     int selectedTreeItemId() const;
     int folderIdByName(const QString& folderName) const;

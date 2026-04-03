@@ -1,8 +1,8 @@
 #ifndef HOMESCREEN_H
 #define HOMESCREEN_H
 
-#include <QDialog>
-#include <QMouseEvent>
+#include <QEvent>
+#include <QMainWindow>
 #include <QResizeEvent>
 #include <QShowEvent>
 #include <QListWidgetItem>
@@ -17,7 +17,7 @@ namespace Ui {
 class homeScreen;
 }
 
-class homeScreen : public QDialog
+class homeScreen : public QMainWindow
 {
     Q_OBJECT
 
@@ -26,7 +26,7 @@ public:
     ~homeScreen();
 
 protected:
-    void mousePressEvent(QMouseEvent *event) override;
+    bool eventFilter(QObject* watched, QEvent* event) override;
     void showEvent(QShowEvent *event) override;
     void resizeEvent(QResizeEvent *event) override;
 
@@ -35,14 +35,18 @@ private slots:
     void addReminder();
     void handleTaskItemAction(QListWidgetItem *item);
     void handleReminderItemAction(QListWidgetItem *item);
+    void refreshVisibleLists();
+    void openGlobalSearch();
     void openSettings();
     void openNotes();
     void openSchedule();
-    void openCompletedItems();
 
 private:
     void updateLogoLabel();
+    void updateResponsiveLayout();
     void loadStoredData();
+    void focusTaskResult(int taskId);
+    void focusReminderResult(int reminderId);
     void appendTaskItem(const Task& task);
     void appendReminderItem(const Reminder& reminder);
     void refreshTaskItem(QListWidgetItem* item, const Task& task);
